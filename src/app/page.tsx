@@ -4,10 +4,8 @@ import { useState, useRef, useCallback } from 'react'
 import { PDFDocument } from 'pdf-lib'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import {
   Upload,
-  X,
   FileText,
   User,
   GraduationCap,
@@ -25,6 +23,9 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  Eye,
+  Printer,
+  ArrowLeft,
 } from 'lucide-react'
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -41,6 +42,12 @@ interface UploadedFile {
   file: File
   preview: string
   dataUrl: string
+}
+
+interface PreviewPage {
+  label: string
+  preview: string
+  isPdf: boolean
 }
 
 /* ─── Document Slots ────────────────────────────────── */
@@ -72,7 +79,6 @@ function fileToDataUrl(file: File): Promise<string> {
   })
 }
 
-/** Convert ANY image to JPEG bytes via Canvas, so pdf-lib can always embedJpg */
 function imageToJpegBytes(dataUrl: string): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -97,7 +103,6 @@ function imageToJpegBytes(dataUrl: string): Promise<Uint8Array> {
 }
 
 async function addImageToPdf(pdfDoc: PDFDocument, dataUrl: string) {
-  // Always convert via canvas → JPEG to support ALL image formats (WebP, HEIC, BMP, etc.)
   const jpgBytes = await imageToJpegBytes(dataUrl)
   const image = await pdfDoc.embedJpg(jpgBytes)
 
@@ -123,17 +128,17 @@ export default function Home() {
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  const [previewPages, setPreviewPages] = useState<PreviewPage[] | null>(null)
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const uploadedCount = Object.keys(uploads).length
   const requiredSlots = docSlots.filter((s) => s.required)
   const uploadedRequired = requiredSlots.filter((s) => uploads[s.id]).length
-  const allRequiredDone = uploadedRequired === requiredSlots.length
 
   /* ── Upload handlers ── */
 
   const handleFile = useCallback(async (slotId: string, file: File) => {
-    // Accept any image or PDF file
     const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|heic|heif|bmp|gif|tiff?)$/i.test(file.name)
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
     if (!isImage && !isPdf) return
@@ -189,7 +194,6 @@ export default function Home() {
       if (dir === 'up' && idx <= 0) return
       if (dir === 'down' && idx >= ids.length - 1) return
 
-      // We need to also swap the uploads
       const swapWith = dir === 'up' ? ids[idx - 1] : ids[idx + 1]
       setUploads((prev) => {
         const next = { ...prev }
@@ -205,13 +209,10 @@ export default function Home() {
     []
   )
 
-  /* ── Generate PDF ── */
+  /* ── Preview & Generate PDF ── */
 
-  const handleGeneratePDF = useCallback(async () => {
-    if (uploadedCount === 0) {
-      setMessage({ type: 'error', text: 'Upload minimal 1 dokumen dulu!' })
-      return
-    }
+  const handlePreview = useCallback(async () => {
+    if (uploadedCount === 0) return
 
     setGenerating(true)
     setProgress(0)
@@ -220,30 +221,31 @@ export default function Home() {
     try {
       const pdfDoc = await PDFDocument.create()
       const orderedSlots = docSlots.filter((s) => uploads[s.id])
+      const pages: PreviewPage[] = []
       let done = 0
-      let failCount = 0
 
       for (const slot of orderedSlots) {
         const u = uploads[slot.id]
         if (!u) continue
 
-        try {
-          const isPdf = u.dataUrl.startsWith('data:application/pdf')
+        const isPdf = u.dataUrl.startsWith('data:application/pdf')
 
+        try {
           if (isPdf) {
-            // Merge PDF pages
             const res = await fetch(u.dataUrl)
             const buf = await res.arrayBuffer()
             const srcDoc = await PDFDocument.load(new Uint8Array(buf))
-            const pages = await pdfDoc.copyPages(srcDoc, srcDoc.getPageIndices())
-            pages.forEach((p) => pdfDoc.addPage(p))
+            const copied = await pdfDoc.copyPages(srcDoc, srcDoc.getPageIndices())
+            copied.forEach((p) => {
+              pdfDoc.addPage(p)
+              pages.push({ label: `${slot.label} (hal. ${copied.indexOf(p) + 1})`, preview: u.preview, isPdf: true })
+            })
           } else {
-            // Any image format → convert to JPEG via canvas → embed
             await addImageToPdf(pdfDoc, u.dataUrl)
+            pages.push({ label: slot.label, preview: u.preview, isPdf: false })
           }
         } catch (err) {
           console.error(`Gagal memproses ${slot.label}:`, err)
-          failCount++
         }
 
         done++
@@ -251,7 +253,7 @@ export default function Home() {
       }
 
       if (pdfDoc.getPageCount() === 0) {
-        setMessage({ type: 'error', text: 'Tidak ada dokumen yang bisa diproses. Pastikan file berupa gambar (JPG/PNG/WebP) atau PDF.' })
+        setMessage({ type: 'error', text: 'Tidak ada dokumen yang bisa diproses.' })
         setGenerating(false)
         return
       }
@@ -260,35 +262,135 @@ export default function Home() {
       const blob = new Blob([pdfBytes], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
 
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'Berkas_Lamaran_Kerja.pdf'
-      document.body.appendChild(a)
-      a.click()
-      setTimeout(() => {
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }, 1000)
-
-      const successCount = done - failCount
-      if (failCount > 0) {
-        setMessage({
-          type: 'error',
-          text: `PDF dibuat dengan ${successCount} dokumen berhasil, ${failCount} gagal diproses.`,
-        })
-      } else {
-        setMessage({
-          type: 'success',
-          text: `PDF berhasil dibuat! ${pdfDoc.getPageCount()} halaman dari ${successCount} dokumen.`,
-        })
-      }
+      setPreviewPages(pages)
+      setPreviewPdfUrl(url)
     } catch (err) {
-      console.error('PDF generation error:', err)
-      setMessage({ type: 'error', text: 'Gagal membuat PDF. Coba upload file lain atau refresh halaman.' })
+      console.error('Preview error:', err)
+      setMessage({ type: 'error', text: 'Gagal membuat preview. Coba lagi.' })
     } finally {
       setGenerating(false)
     }
   }, [uploads, uploadedCount])
+
+  const handleDownloadFromPreview = useCallback(() => {
+    if (!previewPdfUrl) return
+    const a = document.createElement('a')
+    a.href = previewPdfUrl
+    a.download = 'Berkas_Lamaran_Kerja.pdf'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => document.body.removeChild(a), 500)
+  }, [previewPdfUrl])
+
+  const handlePrintFromPreview = useCallback(() => {
+    if (!previewPdfUrl) return
+    const win = window.open(previewPdfUrl, '_blank')
+    if (win) win.onload = () => win.print()
+  }, [previewPdfUrl])
+
+  const handleClosePreview = useCallback(() => {
+    if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl)
+    setPreviewPages(null)
+    setPreviewPdfUrl(null)
+  }, [previewPdfUrl])
+
+  /* ── Preview View ── */
+
+  if (previewPages && previewPdfUrl) {
+    return (
+      <div className="min-h-screen flex flex-col bg-neutral-200/60">
+        <header className="bg-neutral-800 text-white px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleClosePreview}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[13px]"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Kembali</span>
+            </button>
+            <div>
+              <p className="text-[14px] font-semibold">Preview Berkas</p>
+              <p className="text-[11px] text-neutral-400">{previewPages.length} halaman</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrintFromPreview}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[12px]"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Cetak</span>
+            </button>
+            <button
+              onClick={handleDownloadFromPreview}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition-colors text-[12px] font-semibold"
+            >
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 sm:p-8 flex flex-col items-center gap-6">
+          {previewPages.map((page, i) => (
+            <div key={i} className="w-full max-w-[595px]">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <Badge variant="outline" className="text-[11px] font-medium">
+                  Halaman {i + 1}
+                </Badge>
+                <span className="text-[12px] text-neutral-500">{page.label}</span>
+              </div>
+              <div className="bg-white rounded-sm shadow-lg border border-neutral-200/60 overflow-hidden">
+                <div
+                  className="w-full bg-white"
+                  style={{ aspectRatio: '595 / 842' }}
+                >
+                  {page.isPdf ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4">
+                      <FileText className="w-8 h-8 text-neutral-300 mb-2" />
+                      <p className="text-[12px] text-neutral-400">Halaman PDF</p>
+                      <p className="text-[11px] text-neutral-300">{page.label}</p>
+                    </div>
+                  ) : (
+                    <img
+                      src={page.preview}
+                      alt={page.label}
+                      className="w-full h-full object-contain"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-neutral-200/60 via-neutral-200/60 to-transparent pt-8 pb-2">
+            <div className="flex items-center gap-3 bg-white rounded-xl border border-neutral-200 p-3 shadow-lg">
+              <button
+                onClick={handleClosePreview}
+                className="px-4 py-2 rounded-lg border border-neutral-200 text-neutral-700 text-[13px] font-medium hover:bg-neutral-50 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 inline mr-1.5" />
+                Edit
+              </button>
+              <button
+                onClick={handleDownloadFromPreview}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-900 text-white text-[13px] font-semibold transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF ({previewPages.length} hal)
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <footer className="bg-neutral-800 text-neutral-400 px-4 py-2 text-center text-[11px]">
+          Preview Berkas Lamaran Kerja
+        </footer>
+      </div>
+    )
+  }
+
+  /* ── Upload View ── */
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100">
@@ -317,7 +419,6 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1">
-        {/* Main Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto w-full">
           {/* Message */}
           {message && (
@@ -348,11 +449,11 @@ export default function Home() {
                 <ol className="mt-1.5 space-y-1 text-[13px] text-neutral-600 list-decimal list-inside">
                   <li>Upload foto/foto setiap dokumen ke slot yang sesuai</li>
                   <li>Urutkan dokumen dengan tombol panah atas/bawah</li>
-                  <li>Klik <span className="font-semibold text-neutral-800">&quot;Cetak PDF&quot;</span> untuk download file PDF</li>
-                  <li>PDF berisi semua halaman sesuai urutan yang lo tentuin</li>
+                  <li>Klik <span className="font-semibold text-neutral-800">&quot;Preview &amp; Cetak PDF&quot;</span> untuk lihat hasilnya</li>
+                  <li>Download atau cetak PDF dari halaman preview</li>
                 </ol>
                 <p className="mt-2 text-[12px] text-neutral-400">
-                  Mendukung format: JPG, PNG, PDF
+                  Mendukung format: JPG, PNG, WebP, PDF
                 </p>
               </div>
             </div>
@@ -376,7 +477,6 @@ export default function Home() {
                         : 'border-neutral-200'
                   }`}
                 >
-                  {/* Slot Header */}
                   <div className="flex items-center gap-3 px-4 py-3">
                     <GripVertical className="w-4 h-4 text-neutral-300 shrink-0" />
                     <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0">
@@ -394,14 +494,13 @@ export default function Home() {
                         )}
                         {uploaded && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 font-medium shrink-0">
-                            ✓
+                            OK
                           </span>
                         )}
                       </div>
                       <p className="text-[11px] text-neutral-400">{slot.description}</p>
                     </div>
 
-                    {/* Order buttons */}
                     <div className="flex flex-col gap-0.5 shrink-0">
                       <button
                         onClick={() => handleMove(slot.id, 'up')}
@@ -422,7 +521,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Upload Area / Preview */}
                   <div className="px-4 pb-3">
                     {uploaded ? (
                       <div className="relative group">
@@ -433,7 +531,6 @@ export default function Home() {
                             className="w-full h-40 sm:h-52 object-contain bg-white"
                           />
                         </div>
-                        {/* Overlay buttons */}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors rounded-lg flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                           <button
                             onClick={() => handleReplace(slot.id)}
@@ -474,16 +571,15 @@ export default function Home() {
                         <p className="text-[12px] text-neutral-500 text-center">
                           Klik atau drag foto ke sini
                         </p>
-                        <p className="text-[11px] text-neutral-400 mt-1">JPG, PNG, atau PDF</p>
+                        <p className="text-[11px] text-neutral-400 mt-1">JPG, PNG, WebP, atau PDF</p>
                       </div>
                     )}
                   </div>
 
-                  {/* Hidden file input */}
                   <input
                     ref={(el) => { fileInputRefs.current[slot.id] = el }}
                     type="file"
-                    accept="image/*,image/webp,image/heic,.pdf"
+                    accept="image/*,.pdf"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
@@ -511,7 +607,7 @@ export default function Home() {
                 </Button>
               )}
               <Button
-                onClick={handleGeneratePDF}
+                onClick={handlePreview}
                 disabled={generating || uploadedCount === 0}
                 className="flex-1 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold"
                 size="lg"
@@ -519,12 +615,12 @@ export default function Home() {
                 {generating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Membuat PDF... {progress}%
+                    Membuat Preview... {progress}%
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Cetak PDF
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview & Cetak PDF
                     {uploadedCount > 0 && (
                       <span className="ml-2 text-[11px] opacity-70">
                         ({uploadedCount} dokumen)
@@ -536,14 +632,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Spacer for sticky bottom */}
           <div className="h-4" />
         </main>
       </div>
 
-      {/* Footer */}
       <footer className="bg-neutral-800 text-neutral-400 px-4 py-2 text-center text-[11px]">
-        Berkas Lamaran Kerja — Upload foto dokumen, cetak jadi PDF
+        Berkas Lamaran Kerja - Upload foto dokumen, cetak jadi PDF
       </footer>
     </div>
   )
