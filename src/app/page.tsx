@@ -72,25 +72,38 @@ function fileToDataUrl(file: File): Promise<string> {
   })
 }
 
-function embedImage(pdfDoc: PDFDocument, dataUrl: string, pageIndex: number) {
-  const bytes = atob(dataUrl.split(',')[1])
-  const uint8 = new Uint8Array(bytes.length)
-  for (let i = 0; i < bytes.length; i++) uint8[i] = bytes.charCodeAt(i)
+/** Convert ANY image to JPEG bytes via Canvas, so pdf-lib can always embedJpg */
+function imageToJpegBytes(dataUrl: string): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error('Canvas toBlob gagal')); return }
+          blob.arrayBuffer().then((buf) => resolve(new Uint8Array(buf))).catch(reject)
+        },
+        'image/jpeg',
+        0.92
+      )
+    }
+    img.onerror = () => reject(new Error('Gambar tidak bisa dibaca'))
+    img.src = dataUrl
+  })
+}
 
-  let image: ReturnType<PDFDocument['embedJpg']> | ReturnType<PDFDocument['embedPng']>
-  const mime = dataUrl.split(';')[0].split(':')[1]
-
-  if (mime === 'image/png') {
-    image = pdfDoc.embedPng(uint8)
-  } else if (mime === 'image/jpeg' || mime === 'image/jpg') {
-    image = pdfDoc.embedJpg(uint8)
-  } else {
-    // Convert to PNG via canvas
-    return null
-  }
+async function addImageToPdf(pdfDoc: PDFDocument, dataUrl: string) {
+  // Always convert via canvas → JPEG to support ALL image formats (WebP, HEIC, BMP, etc.)
+  const jpgBytes = await imageToJpegBytes(dataUrl)
+  const image = await pdfDoc.embedJpg(jpgBytes)
 
   const page = pdfDoc.addPage([595, 842]) // A4
-  const { width: pw, height: ph } = page.getSize()
+  const pw = 595
+  const ph = 842
   const { width: iw, height: ih } = image.scale(1)
 
   const scale = Math.min(pw / iw, ph / ih)
@@ -100,7 +113,6 @@ function embedImage(pdfDoc: PDFDocument, dataUrl: string, pageIndex: number) {
   const y = (ph - drawH) / 2
 
   page.drawImage(image, { x, y, width: drawW, height: drawH })
-  return true
 }
 
 /* ─── Main Component ────────────────────────────────── */
@@ -121,7 +133,10 @@ export default function Home() {
   /* ── Upload handlers ── */
 
   const handleFile = useCallback(async (slotId: string, file: File) => {
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return
+    // Accept any image or PDF file
+    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|heic|heif|bmp|gif|tiff?)$/i.test(file.name)
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+    if (!isImage && !isPdf) return
     const dataUrl = await fileToDataUrl(file)
     const preview = URL.createObjectURL(file)
     setUploads((prev) => ({ ...prev, [slotId]: { file, preview, dataUrl } }))
@@ -206,30 +221,45 @@ export default function Home() {
       const pdfDoc = await PDFDocument.create()
       const orderedSlots = docSlots.filter((s) => uploads[s.id])
       let done = 0
+      let failCount = 0
 
       for (const slot of orderedSlots) {
         const u = uploads[slot.id]
-        if (u) {
-          const mime = u.dataUrl.split(';')[0].split(':')[1]
+        if (!u) continue
 
-          if (mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg') {
-            embedImage(pdfDoc, u.dataUrl, done)
-          } else if (mime === 'application/pdf') {
-            // Merge PDF page
-            try {
-              const bytes = atob(u.dataUrl.split(',')[1])
-              const uint8 = new Uint8Array(bytes.length)
-              for (let i = 0; i < bytes.length; i++) uint8[i] = bytes.charCodeAt(i)
-              const srcDoc = await PDFDocument.load(uint8)
-              const pages = await pdfDoc.copyPages(srcDoc, srcDoc.getPageIndices())
-              pages.forEach((p) => pdfDoc.addPage(p))
-            } catch {
-              // fallback: skip
-            }
+        try {
+          const isPdf = u.dataUrl.startsWith('data:application/pdf')
+
+          if (isPdf) {
+            // Merge PDF pages
+            const res = await fetch(u.dataUrl)
+            const buf = await res.arrayBuffer()
+            const srcDoc = await PDFDocument.load(new Uint8Array(buf))
+            const pages = await pdfDoc.copyPages(srcDoc, srcDoc.getPageIndices())
+            pages.forEach((p) => pdfDoc.addPage(p))
+          } else {
+            // Any image format → convert to JPEG via canvas → embed
+            await addImageToPdf(pdfDoc, u.dataUrl)
           }
-          done++
-          setProgress(Math.round((done / orderedSlots.length) * 100))
+        } catch (err) {
+          console.error(`Gagal memproses ${slot.label}:`, err)
+          failCount++
         }
+
+        done++
+        setProgress(Math.round((done / orderedSlots.length) * 100))
+      }
+
+      // Remove the empty first page that PDFDocument.create() adds
+      const pages = pdfDoc.getPages()
+      if (pages.length > 0) {
+        pdfDoc.removePage(0)
+      }
+
+      if (pdfDoc.getPageCount() === 0) {
+        setMessage({ type: 'error', text: 'Tidak ada dokumen yang bisa diproses. Pastikan file berupa gambar (JPG/PNG/WebP) atau PDF.' })
+        setGenerating(false)
+        return
       }
 
       const pdfBytes = await pdfDoc.save()
@@ -241,16 +271,26 @@ export default function Home() {
       a.download = 'Berkas_Lamaran_Kerja.pdf'
       document.body.appendChild(a)
       a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 1000)
 
-      setMessage({
-        type: 'success',
-        text: `PDF berhasil dibuat! ${done} halaman dari ${orderedSlots.length} dokumen.`,
-      })
+      const successCount = done - failCount
+      if (failCount > 0) {
+        setMessage({
+          type: 'error',
+          text: `PDF dibuat dengan ${successCount} dokumen berhasil, ${failCount} gagal diproses.`,
+        })
+      } else {
+        setMessage({
+          type: 'success',
+          text: `PDF berhasil dibuat! ${pdfDoc.getPageCount()} halaman dari ${successCount} dokumen.`,
+        })
+      }
     } catch (err) {
-      console.error(err)
-      setMessage({ type: 'error', text: 'Gagal membuat PDF. Coba lagi.' })
+      console.error('PDF generation error:', err)
+      setMessage({ type: 'error', text: 'Gagal membuat PDF. Coba upload file lain atau refresh halaman.' })
     } finally {
       setGenerating(false)
     }
@@ -449,7 +489,7 @@ export default function Home() {
                   <input
                     ref={(el) => { fileInputRefs.current[slot.id] = el }}
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,image/webp,image/heic,.pdf"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
