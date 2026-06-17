@@ -250,12 +250,6 @@ export default function Home() {
         setProgress(Math.round((done / orderedSlots.length) * 100))
       }
 
-      // Remove the empty first page that PDFDocument.create() adds
-      const pages = pdfDoc.getPages()
-      if (pages.length > 0) {
-        pdfDoc.removePage(0)
-      }
-
       if (pdfDoc.getPageCount() === 0) {
         setMessage({ type: 'error', text: 'Tidak ada dokumen yang bisa diproses. Pastikan file berupa gambar (JPG/PNG/WebP) atau PDF.' })
         setGenerating(false)
