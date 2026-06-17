@@ -2,30 +2,17 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { PDFDocument } from 'pdf-lib'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
-  Upload,
-  FileText,
-  User,
-  GraduationCap,
-  CreditCard,
-  FileCheck,
-  BarChart3,
-  ClipboardList,
-  Camera,
+  ArrowUp,
+  ArrowDown,
+  X,
+  Eye,
   Download,
   RotateCcw,
-  GripVertical,
-  ChevronUp,
-  ChevronDown,
-  Image as ImageIcon,
-  Loader2,
-  Check,
-  AlertCircle,
-  Eye,
+  Upload,
   Printer,
-  ArrowLeft,
+  ChevronLeft,
+  Loader2,
 } from 'lucide-react'
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -33,8 +20,7 @@ import {
 interface DocSlot {
   id: string
   label: string
-  icon: React.ElementType
-  description: string
+  desc: string
   required: boolean
 }
 
@@ -53,19 +39,19 @@ interface PreviewPage {
 /* ─── Document Slots ────────────────────────────────── */
 
 const docSlots: DocSlot[] = [
-  { id: 'pas_foto', label: 'Pas Foto', icon: Camera, description: 'Foto 3x4 atau 4x6', required: false },
-  { id: 'surat_lamaran', label: 'Surat Lamaran', icon: FileText, description: 'Surat lamaran pekerjaan', required: true },
-  { id: 'riwayat_hidup', label: 'Daftar Riwayat Hidup', icon: ClipboardList, description: 'CV / riwayat hidup', required: true },
-  { id: 'ktp', label: 'Fotokopi KTP', icon: CreditCard, description: 'Kartu Tanda Penduduk', required: true },
-  { id: 'npwp', label: 'Fotokopi NPWP', icon: CreditCard, description: 'Nomor Pokok Wajib Pajak', required: false },
-  { id: 'ijazah', label: 'Fotokopi Ijazah', icon: GraduationCap, description: 'Ijazah terakhir', required: true },
-  { id: 'skck', label: 'Fotokopi SKCK', icon: FileCheck, description: 'Surat Keterangan Catatan Kepolisian', required: false },
-  { id: 'kartu_vaksin', label: 'Fotokopi Kartu Vaksin', icon: FileCheck, description: 'Kartu vaksinasi', required: false },
-  { id: 'sertifikat', label: 'Fotokopi Sertifikat', icon: FileCheck, description: 'Sertifikat pendukung', required: false },
-  { id: 'kartu_keluarga', label: 'Fotokopi Kartu Keluarga', icon: User, description: 'KK', required: true },
-  { id: 'akta_lahir', label: 'Fotokopi Akta Kelahiran', icon: FileText, description: 'Akta lahir', required: false },
-  { id: 'sk_sehat', label: 'Surat Keterangan Sehat', icon: FileCheck, description: 'Dokumen kesehatan', required: false },
-  { id: 'daftar_nilai', label: 'Daftar Nilai', icon: BarChart3, description: 'Transkrip / rapor', required: false },
+  { id: 'pas_foto', label: 'Pas Foto', desc: '3x4 / 4x6', required: false },
+  { id: 'surat_lamaran', label: 'Surat Lamaran', desc: 'surat lamaran pekerjaan', required: true },
+  { id: 'riwayat_hidup', label: 'Daftar Riwayat Hidup', desc: 'CV', required: true },
+  { id: 'ktp', label: 'KTP', desc: 'fotokopi KTP', required: true },
+  { id: 'npwp', label: 'NPWP', desc: 'fotokopi NPWP', required: false },
+  { id: 'ijazah', label: 'Ijazah', desc: 'fotokopi ijazah terakhir', required: true },
+  { id: 'skck', label: 'SKCK', desc: 'fotokopi SKCK', required: false },
+  { id: 'kartu_vaksin', label: 'Kartu Vaksin', desc: 'fotokopi kartu vaksin', required: false },
+  { id: 'sertifikat', label: 'Sertifikat', desc: 'sertifikat pendukung', required: false },
+  { id: 'kartu_keluarga', label: 'Kartu Keluarga', desc: 'fotokopi KK', required: true },
+  { id: 'akta_lahir', label: 'Akta Kelahiran', desc: 'fotokopi akta lahir', required: false },
+  { id: 'sk_sehat', label: 'SK Sehat', desc: 'surat keterangan sehat', required: false },
+  { id: 'daftar_nilai', label: 'Daftar Nilai', desc: 'transkrip / rapor', required: false },
 ]
 
 /* ─── Helpers ───────────────────────────────────────── */
@@ -106,7 +92,7 @@ async function addImageToPdf(pdfDoc: PDFDocument, dataUrl: string) {
   const jpgBytes = await imageToJpegBytes(dataUrl)
   const image = await pdfDoc.embedJpg(jpgBytes)
 
-  const page = pdfDoc.addPage([595, 842]) // A4
+  const page = pdfDoc.addPage([595, 842])
   const pw = 595
   const ph = 842
   const { width: iw, height: ih } = image.scale(1)
@@ -126,7 +112,7 @@ export default function Home() {
   const [uploads, setUploads] = useState<Record<string, UploadedFile>>({})
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [previewPages, setPreviewPages] = useState<PreviewPage[] | null>(null)
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
@@ -145,7 +131,7 @@ export default function Home() {
     const dataUrl = await fileToDataUrl(file)
     const preview = URL.createObjectURL(file)
     setUploads((prev) => ({ ...prev, [slotId]: { file, preview, dataUrl } }))
-    setMessage(null)
+    setError(null)
   }, [])
 
   const handleDrop = useCallback(
@@ -167,7 +153,7 @@ export default function Home() {
       }
       return next
     })
-    setMessage(null)
+    setError(null)
   }, [])
 
   const handleReplace = useCallback(
@@ -181,7 +167,7 @@ export default function Home() {
   const handleResetAll = useCallback(() => {
     Object.values(uploads).forEach((u) => URL.revokeObjectURL(u.preview))
     setUploads({})
-    setMessage(null)
+    setError(null)
     setProgress(0)
   }, [uploads])
 
@@ -216,7 +202,7 @@ export default function Home() {
 
     setGenerating(true)
     setProgress(0)
-    setMessage(null)
+    setError(null)
 
     try {
       const pdfDoc = await PDFDocument.create()
@@ -253,7 +239,7 @@ export default function Home() {
       }
 
       if (pdfDoc.getPageCount() === 0) {
-        setMessage({ type: 'error', text: 'Tidak ada dokumen yang bisa diproses.' })
+        setError('Tidak ada dokumen yang bisa diproses.')
         setGenerating(false)
         return
       }
@@ -266,7 +252,7 @@ export default function Home() {
       setPreviewPdfUrl(url)
     } catch (err) {
       console.error('Preview error:', err)
-      setMessage({ type: 'error', text: 'Gagal membuat preview. Coba lagi.' })
+      setError('Gagal membuat preview. Coba lagi.')
     } finally {
       setGenerating(false)
     }
@@ -298,58 +284,54 @@ export default function Home() {
 
   if (previewPages && previewPdfUrl) {
     return (
-      <div className="min-h-screen flex flex-col bg-neutral-200/60">
-        <header className="bg-neutral-800 text-white px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleClosePreview}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[13px]"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Kembali</span>
-            </button>
-            <div>
-              <p className="text-[14px] font-semibold">Preview Berkas</p>
-              <p className="text-[11px] text-neutral-400">{previewPages.length} halaman</p>
-            </div>
-          </div>
+      <div className="min-h-screen flex flex-col bg-gray-100">
+        {/* top bar */}
+        <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-50">
+          <button
+            onClick={handleClosePreview}
+            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Kembali
+          </button>
+          <span className="text-sm text-gray-500">
+            {previewPages.length} halaman
+          </span>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrintFromPreview}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[12px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
             >
               <Printer className="w-4 h-4" />
               <span className="hidden sm:inline">Cetak</span>
             </button>
             <button
               onClick={handleDownloadFromPreview}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition-colors text-[12px] font-semibold"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-gray-900 hover:bg-gray-800 rounded-md transition-colors"
             >
               <Download className="w-4 h-4" />
-              Download PDF
+              Download
             </button>
           </div>
-        </header>
+        </div>
 
+        {/* pages */}
         <main className="flex-1 p-4 sm:p-8 flex flex-col items-center gap-6">
           {previewPages.map((page, i) => (
             <div key={i} className="w-full max-w-[595px]">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <Badge variant="outline" className="text-[11px] font-medium">
-                  Halaman {i + 1}
-                </Badge>
-                <span className="text-[12px] text-neutral-500">{page.label}</span>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs text-gray-400 font-medium">{i + 1}</span>
+                <span className="text-xs text-gray-400">·</span>
+                <span className="text-xs text-gray-500">{page.label}</span>
               </div>
-              <div className="bg-white rounded-sm shadow-lg border border-neutral-200/60 overflow-hidden">
+              <div className="bg-white shadow-sm border border-gray-200 rounded-md overflow-hidden">
                 <div
                   className="w-full bg-white"
                   style={{ aspectRatio: '595 / 842' }}
                 >
                   {page.isPdf ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                      <FileText className="w-8 h-8 text-neutral-300 mb-2" />
-                      <p className="text-[12px] text-neutral-400">Halaman PDF</p>
-                      <p className="text-[11px] text-neutral-300">{page.label}</p>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-xs text-gray-400">PDF — {page.label}</span>
                     </div>
                   ) : (
                     <img
@@ -363,29 +345,25 @@ export default function Home() {
             </div>
           ))}
 
-          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-neutral-200/60 via-neutral-200/60 to-transparent pt-8 pb-2">
-            <div className="flex items-center gap-3 bg-white rounded-xl border border-neutral-200 p-3 shadow-lg">
+          {/* sticky bottom download */}
+          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-gray-100 via-gray-100 to-transparent pt-8 pb-2">
+            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2 shadow-md">
               <button
                 onClick={handleClosePreview}
-                className="px-4 py-2 rounded-lg border border-neutral-200 text-neutral-700 text-[13px] font-medium hover:bg-neutral-50 transition-colors"
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 inline mr-1.5" />
                 Edit
               </button>
               <button
                 onClick={handleDownloadFromPreview}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-900 text-white text-[13px] font-semibold transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-md transition-colors"
               >
                 <Download className="w-4 h-4" />
-                Download PDF ({previewPages.length} hal)
+                Download PDF
               </button>
             </div>
           </div>
         </main>
-
-        <footer className="bg-neutral-800 text-neutral-400 px-4 py-2 text-center text-[11px]">
-          Preview Berkas Lamaran Kerja
-        </footer>
       </div>
     )
   }
@@ -393,168 +371,112 @@ export default function Home() {
   /* ── Upload View ── */
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-100">
-      {/* Header */}
-      <header className="bg-neutral-800 text-white px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/10">
-            <Upload className="w-5 h-5" />
-          </div>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* header */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <p className="text-[14px] font-semibold">Buat Berkas Lamaran Kerja</p>
-            <p className="text-[11px] text-neutral-400">Upload foto dokumen, cetak jadi PDF</p>
+            <h1 className="text-base font-semibold text-gray-900">Berkas Lamaran Kerja</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Upload dokumen, cetak jadi PDF</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="border-neutral-500 text-neutral-300 text-[11px]">
-            {uploadedCount}/{docSlots.length} dokumen
-          </Badge>
-          {uploadedRequired === requiredSlots.length && (
-            <Badge className="bg-emerald-600 text-white text-[11px] hover:bg-emerald-600">
-              <Check className="w-3 h-3 mr-1" />
-              Lengkap
-            </Badge>
+          {uploadedCount > 0 && (
+            <span className="text-xs text-gray-400">
+              {uploadedRequired}/{requiredSlots.length} wajib · {uploadedCount} total
+            </span>
           )}
         </div>
       </header>
 
-      <div className="flex flex-1">
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto w-full">
-          {/* Message */}
-          {message && (
-            <div
-              className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-[13px] ${
-                message.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  : 'bg-red-50 text-red-800 border border-red-200'
-              }`}
-            >
-              {message.type === 'success' ? (
-                <Check className="w-4 h-4 shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 shrink-0" />
-              )}
-              {message.text}
+      <main className="flex-1">
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          {/* error */}
+          {error && (
+            <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+              {error}
             </div>
           )}
 
-          {/* Info Card */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-5 mb-6 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <ImageIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[14px] font-semibold text-neutral-800">Cara Pakai</p>
-                <ol className="mt-1.5 space-y-1 text-[13px] text-neutral-600 list-decimal list-inside">
-                  <li>Upload foto/foto setiap dokumen ke slot yang sesuai</li>
-                  <li>Urutkan dokumen dengan tombol panah atas/bawah</li>
-                  <li>Klik <span className="font-semibold text-neutral-800">&quot;Preview &amp; Cetak PDF&quot;</span> untuk lihat hasilnya</li>
-                  <li>Download atau cetak PDF dari halaman preview</li>
-                </ol>
-                <p className="mt-2 text-[12px] text-neutral-400">
-                  Mendukung format: JPG, PNG, WebP, PDF
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Upload Slots */}
-          <div className="space-y-3">
+          {/* upload slots */}
+          <div className="space-y-2.5">
             {docSlots.map((slot) => {
-              const Icon = slot.icon
               const uploaded = uploads[slot.id]
               const idx = docSlots.indexOf(slot)
 
               return (
                 <div
                   key={slot.id}
-                  className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-colors ${
+                  className={`bg-white border rounded-lg overflow-hidden transition-colors ${
                     dragOver === slot.id
-                      ? 'border-blue-400 bg-blue-50/50'
+                      ? 'border-gray-400 bg-gray-50'
                       : uploaded
-                        ? 'border-emerald-200'
-                        : 'border-neutral-200'
+                        ? 'border-gray-300'
+                        : 'border-gray-200'
                   }`}
                 >
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <GripVertical className="w-4 h-4 text-neutral-300 shrink-0" />
-                    <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-neutral-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[13px] font-semibold text-neutral-800 truncate">
-                          {slot.label}
-                        </p>
-                        {slot.required && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium shrink-0">
-                            WAJIB
-                          </span>
-                        )}
-                        {uploaded && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 font-medium shrink-0">
-                            OK
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-neutral-400">{slot.description}</p>
-                    </div>
+                  {/* slot header */}
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    <span className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-800">
+                        {slot.label}
+                        {slot.required && <span className="text-red-400 ml-1">*</span>}
+                      </span>
+                      <span className="text-xs text-gray-400 ml-2">{slot.desc}</span>
+                    </span>
 
-                    <div className="flex flex-col gap-0.5 shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0">
                       <button
                         onClick={() => handleMove(slot.id, 'up')}
                         disabled={idx === 0}
-                        className="p-0.5 rounded hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        title="Pindah ke atas"
+                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                       >
-                        <ChevronUp className="w-3.5 h-3.5 text-neutral-400" />
+                        <ArrowUp className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                       <button
                         onClick={() => handleMove(slot.id, 'down')}
                         disabled={idx === docSlots.length - 1}
-                        className="p-0.5 rounded hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        title="Pindah ke bawah"
+                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                       >
-                        <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+                        <ArrowDown className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="px-4 pb-3">
+                  {/* slot body */}
+                  <div className="px-3 pb-3">
                     {uploaded ? (
                       <div className="relative group">
-                        <div className="rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50">
+                        <div className="rounded-md overflow-hidden border border-gray-200 bg-gray-50">
                           <img
                             src={uploaded.preview}
                             alt={slot.label}
-                            className="w-full h-40 sm:h-52 object-contain bg-white"
+                            className="w-full h-40 sm:h-48 object-contain bg-white"
                           />
                         </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors rounded-lg flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors rounded-md flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                           <button
                             onClick={() => handleReplace(slot.id)}
-                            className="px-3 py-1.5 bg-white text-neutral-800 rounded-lg text-[12px] font-medium shadow-md hover:bg-neutral-50 transition-colors"
+                            className="px-3 py-1.5 bg-white text-gray-800 rounded-md text-xs font-medium shadow hover:bg-gray-50 transition-colors"
                           >
                             Ganti
                           </button>
                           <button
                             onClick={() => handleRemove(slot.id)}
-                            className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[12px] font-medium shadow-md hover:bg-red-600 transition-colors"
+                            className="px-3 py-1.5 bg-white text-red-600 rounded-md text-xs font-medium shadow hover:bg-red-50 transition-colors"
                           >
+                            <X className="w-3.5 h-3.5 inline mr-0.5" />
                             Hapus
                           </button>
                         </div>
-                        <p className="mt-1.5 text-[11px] text-neutral-400 truncate">
-                          {uploaded.file.name} ({(uploaded.file.size / 1024).toFixed(0)} KB)
+                        <p className="mt-1 text-[11px] text-gray-400 truncate">
+                          {uploaded.file.name} · {(uploaded.file.size / 1024).toFixed(0)} KB
                         </p>
                       </div>
                     ) : (
                       <div
-                        className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                        className={`border border-dashed rounded-md p-5 flex flex-col items-center justify-center cursor-pointer transition-colors ${
                           dragOver === slot.id
-                            ? 'border-blue-400 bg-blue-50/50'
-                            : 'border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
+                            ? 'border-gray-400 bg-gray-50'
+                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                         }`}
                         onClick={() => {
                           const input = fileInputRefs.current[slot.id]
@@ -567,11 +489,11 @@ export default function Home() {
                         onDragLeave={() => setDragOver(null)}
                         onDrop={(e) => handleDrop(slot.id, e)}
                       >
-                        <Upload className="w-6 h-6 text-neutral-300 mb-2" />
-                        <p className="text-[12px] text-neutral-500 text-center">
-                          Klik atau drag foto ke sini
+                        <Upload className="w-5 h-5 text-gray-300 mb-1.5" />
+                        <p className="text-xs text-gray-400">
+                          Klik atau drag file ke sini
                         </p>
-                        <p className="text-[11px] text-neutral-400 mt-1">JPG, PNG, WebP, atau PDF</p>
+                        <p className="text-[11px] text-gray-300 mt-0.5">JPG, PNG, WebP, PDF</p>
                       </div>
                     )}
                   </div>
@@ -591,54 +513,40 @@ export default function Home() {
               )
             })}
           </div>
+        </div>
+      </main>
 
-          {/* Bottom Actions */}
-          <div className="sticky bottom-0 bg-gradient-to-t from-neutral-100 via-neutral-100 to-transparent pt-6 pb-2 mt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-            <div className="flex items-center gap-3 bg-white rounded-xl border border-neutral-200 p-3 shadow-lg">
-              {uploadedCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetAll}
-                  className="text-neutral-500 hover:text-red-600 shrink-0"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1.5" />
-                  Reset
-                </Button>
+      {/* bottom bar */}
+      {uploadedCount > 0 && (
+        <div className="sticky bottom-0 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent pt-6 pb-3 -mx-4 px-4 sm:-mx-0 sm:px-0">
+          <div className="max-w-2xl mx-auto flex items-center gap-2">
+            <button
+              onClick={handleResetAll}
+              className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </button>
+            <button
+              onClick={handlePreview}
+              disabled={generating}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {progress}%
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" />
+                  Preview PDF
+                </>
               )}
-              <Button
-                onClick={handlePreview}
-                disabled={generating || uploadedCount === 0}
-                className="flex-1 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold"
-                size="lg"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Membuat Preview... {progress}%
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Preview & Cetak PDF
-                    {uploadedCount > 0 && (
-                      <span className="ml-2 text-[11px] opacity-70">
-                        ({uploadedCount} dokumen)
-                      </span>
-                    )}
-                  </>
-                )}
-              </Button>
-            </div>
+            </button>
           </div>
-
-          <div className="h-4" />
-        </main>
-      </div>
-
-      <footer className="bg-neutral-800 text-neutral-400 px-4 py-2 text-center text-[11px]">
-        Berkas Lamaran Kerja - Upload foto dokumen, cetak jadi PDF
-      </footer>
+        </div>
+      )}
     </div>
   )
 }

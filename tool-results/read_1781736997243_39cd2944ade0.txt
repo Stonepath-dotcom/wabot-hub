@@ -1,0 +1,644 @@
+     1→'use client'
+     2→
+     3→import { useState, useRef, useCallback } from 'react'
+     4→import { PDFDocument } from 'pdf-lib'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import {
+     8→  Upload,
+     9→  FileText,
+    10→  User,
+    11→  GraduationCap,
+    12→  CreditCard,
+    13→  FileCheck,
+    14→  BarChart3,
+    15→  ClipboardList,
+    16→  Camera,
+    17→  Download,
+    18→  RotateCcw,
+    19→  GripVertical,
+    20→  ChevronUp,
+    21→  ChevronDown,
+    22→  Image as ImageIcon,
+    23→  Loader2,
+    24→  Check,
+    25→  AlertCircle,
+    26→  Eye,
+    27→  Printer,
+    28→  ArrowLeft,
+    29→} from 'lucide-react'
+    30→
+    31→/* ─── Types ─────────────────────────────────────────── */
+    32→
+    33→interface DocSlot {
+    34→  id: string
+    35→  label: string
+    36→  icon: React.ElementType
+    37→  description: string
+    38→  required: boolean
+    39→}
+    40→
+    41→interface UploadedFile {
+    42→  file: File
+    43→  preview: string
+    44→  dataUrl: string
+    45→}
+    46→
+    47→interface PreviewPage {
+    48→  label: string
+    49→  preview: string
+    50→  isPdf: boolean
+    51→}
+    52→
+    53→/* ─── Document Slots ────────────────────────────────── */
+    54→
+    55→const docSlots: DocSlot[] = [
+    56→  { id: 'pas_foto', label: 'Pas Foto', icon: Camera, description: 'Foto 3x4 atau 4x6', required: false },
+    57→  { id: 'surat_lamaran', label: 'Surat Lamaran', icon: FileText, description: 'Surat lamaran pekerjaan', required: true },
+    58→  { id: 'riwayat_hidup', label: 'Daftar Riwayat Hidup', icon: ClipboardList, description: 'CV / riwayat hidup', required: true },
+    59→  { id: 'ktp', label: 'Fotokopi KTP', icon: CreditCard, description: 'Kartu Tanda Penduduk', required: true },
+    60→  { id: 'npwp', label: 'Fotokopi NPWP', icon: CreditCard, description: 'Nomor Pokok Wajib Pajak', required: false },
+    61→  { id: 'ijazah', label: 'Fotokopi Ijazah', icon: GraduationCap, description: 'Ijazah terakhir', required: true },
+    62→  { id: 'skck', label: 'Fotokopi SKCK', icon: FileCheck, description: 'Surat Keterangan Catatan Kepolisian', required: false },
+    63→  { id: 'kartu_vaksin', label: 'Fotokopi Kartu Vaksin', icon: FileCheck, description: 'Kartu vaksinasi', required: false },
+    64→  { id: 'sertifikat', label: 'Fotokopi Sertifikat', icon: FileCheck, description: 'Sertifikat pendukung', required: false },
+    65→  { id: 'kartu_keluarga', label: 'Fotokopi Kartu Keluarga', icon: User, description: 'KK', required: true },
+    66→  { id: 'akta_lahir', label: 'Fotokopi Akta Kelahiran', icon: FileText, description: 'Akta lahir', required: false },
+    67→  { id: 'sk_sehat', label: 'Surat Keterangan Sehat', icon: FileCheck, description: 'Dokumen kesehatan', required: false },
+    68→  { id: 'daftar_nilai', label: 'Daftar Nilai', icon: BarChart3, description: 'Transkrip / rapor', required: false },
+    69→]
+    70→
+    71→/* ─── Helpers ───────────────────────────────────────── */
+    72→
+    73→function fileToDataUrl(file: File): Promise<string> {
+    74→  return new Promise((resolve, reject) => {
+    75→    const reader = new FileReader()
+    76→    reader.onload = () => resolve(reader.result as string)
+    77→    reader.onerror = reject
+    78→    reader.readAsDataURL(file)
+    79→  })
+    80→}
+    81→
+    82→function imageToJpegBytes(dataUrl: string): Promise<Uint8Array> {
+    83→  return new Promise((resolve, reject) => {
+    84→    const img = new Image()
+    85→    img.onload = () => {
+    86→      const canvas = document.createElement('canvas')
+    87→      canvas.width = img.naturalWidth
+    88→      canvas.height = img.naturalHeight
+    89→      const ctx = canvas.getContext('2d')!
+    90→      ctx.drawImage(img, 0, 0)
+    91→      canvas.toBlob(
+    92→        (blob) => {
+    93→          if (!blob) { reject(new Error('Canvas toBlob gagal')); return }
+    94→          blob.arrayBuffer().then((buf) => resolve(new Uint8Array(buf))).catch(reject)
+    95→        },
+    96→        'image/jpeg',
+    97→        0.92
+    98→      )
+    99→    }
+   100→    img.onerror = () => reject(new Error('Gambar tidak bisa dibaca'))
+   101→    img.src = dataUrl
+   102→  })
+   103→}
+   104→
+   105→async function addImageToPdf(pdfDoc: PDFDocument, dataUrl: string) {
+   106→  const jpgBytes = await imageToJpegBytes(dataUrl)
+   107→  const image = await pdfDoc.embedJpg(jpgBytes)
+   108→
+   109→  const page = pdfDoc.addPage([595, 842]) // A4
+   110→  const pw = 595
+   111→  const ph = 842
+   112→  const { width: iw, height: ih } = image.scale(1)
+   113→
+   114→  const scale = Math.min(pw / iw, ph / ih)
+   115→  const drawW = iw * scale
+   116→  const drawH = ih * scale
+   117→  const x = (pw - drawW) / 2
+   118→  const y = (ph - drawH) / 2
+   119→
+   120→  page.drawImage(image, { x, y, width: drawW, height: drawH })
+   121→}
+   122→
+   123→/* ─── Main Component ────────────────────────────────── */
+   124→
+   125→export default function Home() {
+   126→  const [uploads, setUploads] = useState<Record<string, UploadedFile>>({})
+   127→  const [generating, setGenerating] = useState(false)
+   128→  const [progress, setProgress] = useState(0)
+   129→  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+   130→  const [dragOver, setDragOver] = useState<string | null>(null)
+   131→  const [previewPages, setPreviewPages] = useState<PreviewPage[] | null>(null)
+   132→  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+   133→  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+   134→
+   135→  const uploadedCount = Object.keys(uploads).length
+   136→  const requiredSlots = docSlots.filter((s) => s.required)
+   137→  const uploadedRequired = requiredSlots.filter((s) => uploads[s.id]).length
+   138→
+   139→  /* ── Upload handlers ── */
+   140→
+   141→  const handleFile = useCallback(async (slotId: string, file: File) => {
+   142→    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|heic|heif|bmp|gif|tiff?)$/i.test(file.name)
+   143→    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+   144→    if (!isImage && !isPdf) return
+   145→    const dataUrl = await fileToDataUrl(file)
+   146→    const preview = URL.createObjectURL(file)
+   147→    setUploads((prev) => ({ ...prev, [slotId]: { file, preview, dataUrl } }))
+   148→    setMessage(null)
+   149→  }, [])
+   150→
+   151→  const handleDrop = useCallback(
+   152→    (slotId: string, e: React.DragEvent) => {
+   153→      e.preventDefault()
+   154→      setDragOver(null)
+   155→      const file = e.dataTransfer.files[0]
+   156→      if (file) handleFile(slotId, file)
+   157→    },
+   158→    [handleFile]
+   159→  )
+   160→
+   161→  const handleRemove = useCallback((slotId: string) => {
+   162→    setUploads((prev) => {
+   163→      const next = { ...prev }
+   164→      if (next[slotId]) {
+   165→        URL.revokeObjectURL(next[slotId].preview)
+   166→        delete next[slotId]
+   167→      }
+   168→      return next
+   169→    })
+   170→    setMessage(null)
+   171→  }, [])
+   172→
+   173→  const handleReplace = useCallback(
+   174→    (slotId: string) => {
+   175→      const input = fileInputRefs.current[slotId]
+   176→      if (input) input.click()
+   177→    },
+   178→    []
+   179→  )
+   180→
+   181→  const handleResetAll = useCallback(() => {
+   182→    Object.values(uploads).forEach((u) => URL.revokeObjectURL(u.preview))
+   183→    setUploads({})
+   184→    setMessage(null)
+   185→    setProgress(0)
+   186→  }, [uploads])
+   187→
+   188→  /* ── Move up / down ── */
+   189→
+   190→  const handleMove = useCallback(
+   191→    (slotId: string, dir: 'up' | 'down') => {
+   192→      const ids = docSlots.map((s) => s.id)
+   193→      const idx = ids.indexOf(slotId)
+   194→      if (dir === 'up' && idx <= 0) return
+   195→      if (dir === 'down' && idx >= ids.length - 1) return
+   196→
+   197→      const swapWith = dir === 'up' ? ids[idx - 1] : ids[idx + 1]
+   198→      setUploads((prev) => {
+   199→        const next = { ...prev }
+   200→        const a = next[slotId]
+   201→        const b = next[swapWith]
+   202→        if (a) delete next[slotId]
+   203→        if (b) delete next[swapWith]
+   204→        if (b) next[slotId] = b
+   205→        if (a) next[swapWith] = a
+   206→        return next
+   207→      })
+   208→    },
+   209→    []
+   210→  )
+   211→
+   212→  /* ── Preview & Generate PDF ── */
+   213→
+   214→  const handlePreview = useCallback(async () => {
+   215→    if (uploadedCount === 0) return
+   216→
+   217→    setGenerating(true)
+   218→    setProgress(0)
+   219→    setMessage(null)
+   220→
+   221→    try {
+   222→      const pdfDoc = await PDFDocument.create()
+   223→      const orderedSlots = docSlots.filter((s) => uploads[s.id])
+   224→      const pages: PreviewPage[] = []
+   225→      let done = 0
+   226→
+   227→      for (const slot of orderedSlots) {
+   228→        const u = uploads[slot.id]
+   229→        if (!u) continue
+   230→
+   231→        const isPdf = u.dataUrl.startsWith('data:application/pdf')
+   232→
+   233→        try {
+   234→          if (isPdf) {
+   235→            const res = await fetch(u.dataUrl)
+   236→            const buf = await res.arrayBuffer()
+   237→            const srcDoc = await PDFDocument.load(new Uint8Array(buf))
+   238→            const copied = await pdfDoc.copyPages(srcDoc, srcDoc.getPageIndices())
+   239→            copied.forEach((p) => {
+   240→              pdfDoc.addPage(p)
+   241→              pages.push({ label: `${slot.label} (hal. ${copied.indexOf(p) + 1})`, preview: u.preview, isPdf: true })
+   242→            })
+   243→          } else {
+   244→            await addImageToPdf(pdfDoc, u.dataUrl)
+   245→            pages.push({ label: slot.label, preview: u.preview, isPdf: false })
+   246→          }
+   247→        } catch (err) {
+   248→          console.error(`Gagal memproses ${slot.label}:`, err)
+   249→        }
+   250→
+   251→        done++
+   252→        setProgress(Math.round((done / orderedSlots.length) * 100))
+   253→      }
+   254→
+   255→      if (pdfDoc.getPageCount() === 0) {
+   256→        setMessage({ type: 'error', text: 'Tidak ada dokumen yang bisa diproses.' })
+   257→        setGenerating(false)
+   258→        return
+   259→      }
+   260→
+   261→      const pdfBytes = await pdfDoc.save()
+   262→      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+   263→      const url = URL.createObjectURL(blob)
+   264→
+   265→      setPreviewPages(pages)
+   266→      setPreviewPdfUrl(url)
+   267→    } catch (err) {
+   268→      console.error('Preview error:', err)
+   269→      setMessage({ type: 'error', text: 'Gagal membuat preview. Coba lagi.' })
+   270→    } finally {
+   271→      setGenerating(false)
+   272→    }
+   273→  }, [uploads, uploadedCount])
+   274→
+   275→  const handleDownloadFromPreview = useCallback(() => {
+   276→    if (!previewPdfUrl) return
+   277→    const a = document.createElement('a')
+   278→    a.href = previewPdfUrl
+   279→    a.download = 'Berkas_Lamaran_Kerja.pdf'
+   280→    document.body.appendChild(a)
+   281→    a.click()
+   282→    setTimeout(() => document.body.removeChild(a), 500)
+   283→  }, [previewPdfUrl])
+   284→
+   285→  const handlePrintFromPreview = useCallback(() => {
+   286→    if (!previewPdfUrl) return
+   287→    const win = window.open(previewPdfUrl, '_blank')
+   288→    if (win) win.onload = () => win.print()
+   289→  }, [previewPdfUrl])
+   290→
+   291→  const handleClosePreview = useCallback(() => {
+   292→    if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl)
+   293→    setPreviewPages(null)
+   294→    setPreviewPdfUrl(null)
+   295→  }, [previewPdfUrl])
+   296→
+   297→  /* ── Preview View ── */
+   298→
+   299→  if (previewPages && previewPdfUrl) {
+   300→    return (
+   301→      <div className="min-h-screen flex flex-col bg-neutral-200/60">
+   302→        <header className="bg-neutral-800 text-white px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+   303→          <div className="flex items-center gap-3">
+   304→            <button
+   305→              onClick={handleClosePreview}
+   306→              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[13px]"
+   307→            >
+   308→              <ArrowLeft className="w-4 h-4" />
+   309→              <span className="hidden sm:inline">Kembali</span>
+   310→            </button>
+   311→            <div>
+   312→              <p className="text-[14px] font-semibold">Preview Berkas</p>
+   313→              <p className="text-[11px] text-neutral-400">{previewPages.length} halaman</p>
+   314→            </div>
+   315→          </div>
+   316→          <div className="flex items-center gap-2">
+   317→            <button
+   318→              onClick={handlePrintFromPreview}
+   319→              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[12px]"
+   320→            >
+   321→              <Printer className="w-4 h-4" />
+   322→              <span className="hidden sm:inline">Cetak</span>
+   323→            </button>
+   324→            <button
+   325→              onClick={handleDownloadFromPreview}
+   326→              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition-colors text-[12px] font-semibold"
+   327→            >
+   328→              <Download className="w-4 h-4" />
+   329→              Download PDF
+   330→            </button>
+   331→          </div>
+   332→        </header>
+   333→
+   334→        <main className="flex-1 p-4 sm:p-8 flex flex-col items-center gap-6">
+   335→          {previewPages.map((page, i) => (
+   336→            <div key={i} className="w-full max-w-[595px]">
+   337→              <div className="flex items-center gap-2 mb-2 px-1">
+   338→                <Badge variant="outline" className="text-[11px] font-medium">
+   339→                  Halaman {i + 1}
+   340→                </Badge>
+   341→                <span className="text-[12px] text-neutral-500">{page.label}</span>
+   342→              </div>
+   343→              <div className="bg-white rounded-sm shadow-lg border border-neutral-200/60 overflow-hidden">
+   344→                <div
+   345→                  className="w-full bg-white"
+   346→                  style={{ aspectRatio: '595 / 842' }}
+   347→                >
+   348→                  {page.isPdf ? (
+   349→                    <div className="w-full h-full flex flex-col items-center justify-center p-4">
+   350→                      <FileText className="w-8 h-8 text-neutral-300 mb-2" />
+   351→                      <p className="text-[12px] text-neutral-400">Halaman PDF</p>
+   352→                      <p className="text-[11px] text-neutral-300">{page.label}</p>
+   353→                    </div>
+   354→                  ) : (
+   355→                    <img
+   356→                      src={page.preview}
+   357→                      alt={page.label}
+   358→                      className="w-full h-full object-contain"
+   359→                    />
+   360→                  )}
+   361→                </div>
+   362→              </div>
+   363→            </div>
+   364→          ))}
+   365→
+   366→          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-neutral-200/60 via-neutral-200/60 to-transparent pt-8 pb-2">
+   367→            <div className="flex items-center gap-3 bg-white rounded-xl border border-neutral-200 p-3 shadow-lg">
+   368→              <button
+   369→                onClick={handleClosePreview}
+   370→                className="px-4 py-2 rounded-lg border border-neutral-200 text-neutral-700 text-[13px] font-medium hover:bg-neutral-50 transition-colors"
+   371→              >
+   372→                <ArrowLeft className="w-4 h-4 inline mr-1.5" />
+   373→                Edit
+   374→              </button>
+   375→              <button
+   376→                onClick={handleDownloadFromPreview}
+   377→                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-900 text-white text-[13px] font-semibold transition-colors"
+   378→              >
+   379→                <Download className="w-4 h-4" />
+   380→                Download PDF ({previewPages.length} hal)
+   381→              </button>
+   382→            </div>
+   383→          </div>
+   384→        </main>
+   385→
+   386→        <footer className="bg-neutral-800 text-neutral-400 px-4 py-2 text-center text-[11px]">
+   387→          Preview Berkas Lamaran Kerja
+   388→        </footer>
+   389→      </div>
+   390→    )
+   391→  }
+   392→
+   393→  /* ── Upload View ── */
+   394→
+   395→  return (
+   396→    <div className="min-h-screen flex flex-col bg-neutral-100">
+   397→      {/* Header */}
+   398→      <header className="bg-neutral-800 text-white px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+   399→        <div className="flex items-center gap-3">
+   400→          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/10">
+   401→            <Upload className="w-5 h-5" />
+   402→          </div>
+   403→          <div>
+   404→            <p className="text-[14px] font-semibold">Buat Berkas Lamaran Kerja</p>
+   405→            <p className="text-[11px] text-neutral-400">Upload foto dokumen, cetak jadi PDF</p>
+   406→          </div>
+   407→        </div>
+   408→        <div className="flex items-center gap-2">
+   409→          <Badge variant="outline" className="border-neutral-500 text-neutral-300 text-[11px]">
+   410→            {uploadedCount}/{docSlots.length} dokumen
+   411→          </Badge>
+   412→          {uploadedRequired === requiredSlots.length && (
+   413→            <Badge className="bg-emerald-600 text-white text-[11px] hover:bg-emerald-600">
+   414→              <Check className="w-3 h-3 mr-1" />
+   415→              Lengkap
+   416→            </Badge>
+   417→          )}
+   418→        </div>
+   419→      </header>
+   420→
+   421→      <div className="flex flex-1">
+   422→        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto w-full">
+   423→          {/* Message */}
+   424→          {message && (
+   425→            <div
+   426→              className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-[13px] ${
+   427→                message.type === 'success'
+   428→                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+   429→                  : 'bg-red-50 text-red-800 border border-red-200'
+   430→              }`}
+   431→            >
+   432→              {message.type === 'success' ? (
+   433→                <Check className="w-4 h-4 shrink-0" />
+   434→              ) : (
+   435→                <AlertCircle className="w-4 h-4 shrink-0" />
+   436→              )}
+   437→              {message.text}
+   438→            </div>
+   439→          )}
+   440→
+   441→          {/* Info Card */}
+   442→          <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-5 mb-6 shadow-sm">
+   443→            <div className="flex items-start gap-3">
+   444→              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+   445→                <ImageIcon className="w-5 h-5 text-blue-600" />
+   446→              </div>
+   447→              <div>
+   448→                <p className="text-[14px] font-semibold text-neutral-800">Cara Pakai</p>
+   449→                <ol className="mt-1.5 space-y-1 text-[13px] text-neutral-600 list-decimal list-inside">
+   450→                  <li>Upload foto/foto setiap dokumen ke slot yang sesuai</li>
+   451→                  <li>Urutkan dokumen dengan tombol panah atas/bawah</li>
+   452→                  <li>Klik <span className="font-semibold text-neutral-800">&quot;Preview &amp; Cetak PDF&quot;</span> untuk lihat hasilnya</li>
+   453→                  <li>Download atau cetak PDF dari halaman preview</li>
+   454→                </ol>
+   455→                <p className="mt-2 text-[12px] text-neutral-400">
+   456→                  Mendukung format: JPG, PNG, WebP, PDF
+   457→                </p>
+   458→              </div>
+   459→            </div>
+   460→          </div>
+   461→
+   462→          {/* Upload Slots */}
+   463→          <div className="space-y-3">
+   464→            {docSlots.map((slot) => {
+   465→              const Icon = slot.icon
+   466→              const uploaded = uploads[slot.id]
+   467→              const idx = docSlots.indexOf(slot)
+   468→
+   469→              return (
+   470→                <div
+   471→                  key={slot.id}
+   472→                  className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-colors ${
+   473→                    dragOver === slot.id
+   474→                      ? 'border-blue-400 bg-blue-50/50'
+   475→                      : uploaded
+   476→                        ? 'border-emerald-200'
+   477→                        : 'border-neutral-200'
+   478→                  }`}
+   479→                >
+   480→                  <div className="flex items-center gap-3 px-4 py-3">
+   481→                    <GripVertical className="w-4 h-4 text-neutral-300 shrink-0" />
+   482→                    <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0">
+   483→                      <Icon className="w-4 h-4 text-neutral-500" />
+   484→                    </div>
+   485→                    <div className="flex-1 min-w-0">
+   486→                      <div className="flex items-center gap-2">
+   487→                        <p className="text-[13px] font-semibold text-neutral-800 truncate">
+   488→                          {slot.label}
+   489→                        </p>
+   490→                        {slot.required && (
+   491→                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium shrink-0">
+   492→                            WAJIB
+   493→                          </span>
+   494→                        )}
+   495→                        {uploaded && (
+   496→                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 font-medium shrink-0">
+   497→                            OK
+   498→                          </span>
+   499→                        )}
+   500→                      </div>
+   501→                      <p className="text-[11px] text-neutral-400">{slot.description}</p>
+   502→                    </div>
+   503→
+   504→                    <div className="flex flex-col gap-0.5 shrink-0">
+   505→                      <button
+   506→                        onClick={() => handleMove(slot.id, 'up')}
+   507→                        disabled={idx === 0}
+   508→                        className="p-0.5 rounded hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+   509→                        title="Pindah ke atas"
+   510→                      >
+   511→                        <ChevronUp className="w-3.5 h-3.5 text-neutral-400" />
+   512→                      </button>
+   513→                      <button
+   514→                        onClick={() => handleMove(slot.id, 'down')}
+   515→                        disabled={idx === docSlots.length - 1}
+   516→                        className="p-0.5 rounded hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+   517→                        title="Pindah ke bawah"
+   518→                      >
+   519→                        <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+   520→                      </button>
+   521→                    </div>
+   522→                  </div>
+   523→
+   524→                  <div className="px-4 pb-3">
+   525→                    {uploaded ? (
+   526→                      <div className="relative group">
+   527→                        <div className="rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50">
+   528→                          <img
+   529→                            src={uploaded.preview}
+   530→                            alt={slot.label}
+   531→                            className="w-full h-40 sm:h-52 object-contain bg-white"
+   532→                          />
+   533→                        </div>
+   534→                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors rounded-lg flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+   535→                          <button
+   536→                            onClick={() => handleReplace(slot.id)}
+   537→                            className="px-3 py-1.5 bg-white text-neutral-800 rounded-lg text-[12px] font-medium shadow-md hover:bg-neutral-50 transition-colors"
+   538→                          >
+   539→                            Ganti
+   540→                          </button>
+   541→                          <button
+   542→                            onClick={() => handleRemove(slot.id)}
+   543→                            className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[12px] font-medium shadow-md hover:bg-red-600 transition-colors"
+   544→                          >
+   545→                            Hapus
+   546→                          </button>
+   547→                        </div>
+   548→                        <p className="mt-1.5 text-[11px] text-neutral-400 truncate">
+   549→                          {uploaded.file.name} ({(uploaded.file.size / 1024).toFixed(0)} KB)
+   550→                        </p>
+   551→                      </div>
+   552→                    ) : (
+   553→                      <div
+   554→                        className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+   555→                          dragOver === slot.id
+   556→                            ? 'border-blue-400 bg-blue-50/50'
+   557→                            : 'border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
+   558→                        }`}
+   559→                        onClick={() => {
+   560→                          const input = fileInputRefs.current[slot.id]
+   561→                          if (input) input.click()
+   562→                        }}
+   563→                        onDragOver={(e) => {
+   564→                          e.preventDefault()
+   565→                          setDragOver(slot.id)
+   566→                        }}
+   567→                        onDragLeave={() => setDragOver(null)}
+   568→                        onDrop={(e) => handleDrop(slot.id, e)}
+   569→                      >
+   570→                        <Upload className="w-6 h-6 text-neutral-300 mb-2" />
+   571→                        <p className="text-[12px] text-neutral-500 text-center">
+   572→                          Klik atau drag foto ke sini
+   573→                        </p>
+   574→                        <p className="text-[11px] text-neutral-400 mt-1">JPG, PNG, WebP, atau PDF</p>
+   575→                      </div>
+   576→                    )}
+   577→                  </div>
+   578→
+   579→                  <input
+   580→                    ref={(el) => { fileInputRefs.current[slot.id] = el }}
+   581→                    type="file"
+   582→                    accept="image/*,.pdf"
+   583→                    className="hidden"
+   584→                    onChange={(e) => {
+   585→                      const file = e.target.files?.[0]
+   586→                      if (file) handleFile(slot.id, file)
+   587→                      e.target.value = ''
+   588→                    }}
+   589→                  />
+   590→                </div>
+   591→              )
+   592→            })}
+   593→          </div>
+   594→
+   595→          {/* Bottom Actions */}
+   596→          <div className="sticky bottom-0 bg-gradient-to-t from-neutral-100 via-neutral-100 to-transparent pt-6 pb-2 mt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+   597→            <div className="flex items-center gap-3 bg-white rounded-xl border border-neutral-200 p-3 shadow-lg">
+   598→              {uploadedCount > 0 && (
+   599→                <Button
+   600→                  variant="ghost"
+   601→                  size="sm"
+   602→                  onClick={handleResetAll}
+   603→                  className="text-neutral-500 hover:text-red-600 shrink-0"
+   604→                >
+   605→                  <RotateCcw className="w-4 h-4 mr-1.5" />
+   606→                  Reset
+   607→                </Button>
+   608→              )}
+   609→              <Button
+   610→                onClick={handlePreview}
+   611→                disabled={generating || uploadedCount === 0}
+   612→                className="flex-1 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold"
+   613→                size="lg"
+   614→              >
+   615→                {generating ? (
+   616→                  <>
+   617→                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+   618→                    Membuat Preview... {progress}%
+   619→                  </>
+   620→                ) : (
+   621→                  <>
+   622→                    <Eye className="w-4 h-4 mr-2" />
+   623→                    Preview & Cetak PDF
+   624→                    {uploadedCount > 0 && (
+   625→                      <span className="ml-2 text-[11px] opacity-70">
+   626→                        ({uploadedCount} dokumen)
+   627→                      </span>
+   628→                    )}
+   629→                  </>
+   630→                )}
+   631→              </Button>
+   632→            </div>
+   633→          </div>
+   634→
+   635→          <div className="h-4" />
+   636→        </main>
+   637→      </div>
+   638→
+   639→      <footer className="bg-neutral-800 text-neutral-400 px-4 py-2 text-center text-[11px]">
+   640→        Berkas Lamaran Kerja - Upload foto dokumen, cetak jadi PDF
+   641→      </footer>
+   642→    </div>
+   643→  )
+   644→}
