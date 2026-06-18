@@ -69,27 +69,37 @@ export default function Home() {
             <div className="flex justify-center lg:justify-end animate-fade-in-right">
               <div className="relative">
                 {/* glow behind phone */}
-                <div className="absolute -inset-12 bg-red-600/[0.08] blur-3xl rounded-full pointer-events-none animate-glow-pulse" />
+                <div className="absolute -inset-14 bg-red-600/[0.07] blur-[60px] rounded-full pointer-events-none animate-glow-pulse" />
 
-                {/* phone frame */}
-                <div className="relative w-[300px] sm:w-[340px] lg:w-[360px] bg-[#1a1a1a] rounded-[40px] p-[7px] shadow-2xl shadow-black/70 border border-white/[0.08] animate-phone-float">
-                  {/* notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-7 bg-[#1a1a1a] rounded-b-2xl z-10" />
+                {/* phone frame — outer ring */}
+                <div className="relative w-[280px] sm:w-[300px] lg:w-[310px] rounded-[44px] p-[2px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] shadow-2xl shadow-black/80 animate-phone-float">
+                  {/* phone body */}
+                  <div className="relative bg-[#0f0f0f] rounded-[42px] p-[5px]">
+                    {/* notch */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[26px] bg-[#0f0f0f] rounded-b-2xl z-10" />
+                    <div className="absolute top-[7px] left-1/2 -translate-x-1/2 w-16 h-[18px] bg-black rounded-full z-10" />
 
-                  {/* screen */}
-                  <div className="rounded-[33px] overflow-hidden bg-black">
-                    <Image
-                      src="/phone-mockup.png"
-                      alt="HakiPDF di mobile"
-                      width={780}
-                      height={1690}
-                      className="w-full h-auto"
-                      priority
-                    />
+                    {/* screen — fixed height, cropped top */}
+                    <div className="rounded-[37px] overflow-hidden bg-black h-[520px] sm:h-[560px] lg:h-[580px] relative">
+                      <Image
+                        src="/phone-mockup.png"
+                        alt="HakiPDF di mobile"
+                        width={780}
+                        height={1690}
+                        className="w-full h-full object-cover object-top"
+                        priority
+                      />
+
+                      {/* bottom fade */}
+                      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                    </div>
+
+                    {/* home indicator */}
+                    <div className="absolute bottom-[9px] left-1/2 -translate-x-1/2 w-28 h-[4px] bg-white/10 rounded-full" />
                   </div>
 
-                  {/* home indicator */}
-                  <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/15 rounded-full" />
+                  {/* reflection shine */}
+                  <div className="absolute top-3 left-3 w-20 h-40 bg-gradient-to-b from-white/[0.06] to-transparent rounded-full blur-xl pointer-events-none rotate-[-15deg]" />
                 </div>
               </div>
             </div>
