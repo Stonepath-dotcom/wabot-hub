@@ -1,11 +1,18 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
 export default function Home() {
   const statsRef = useRef<HTMLDivElement>(null)
+  const [showTop, setShowTop] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 600)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -182,7 +189,7 @@ export default function Home() {
         <div className="shimmer-divider" />
 
         {/* feature highlights */}
-        <section className="py-24">
+        <section id="fitur" className="py-24">
           <div className="max-w-5xl mx-auto px-5">
             <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Kenapa HakiPDF</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -259,7 +266,7 @@ export default function Home() {
         {/* cara kerja */}
         <section className="py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Cara kerja</p>
+            <p id="cara-kerja" className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Cara kerja</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {[
                 { step: '01', title: 'Upload', desc: 'Foto dokumen ke slot yang sesuai. Didukung JPG, PNG, WebP, dan PDF.' },
@@ -317,7 +324,7 @@ export default function Home() {
         {/* faq */}
         <section className="py-24">
           <div className="max-w-xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">FAQ</p>
+            <p id="faq" className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">FAQ</p>
             <div className="space-y-3">
               {[
                 { q: 'Format file apa aja yang didukung?', a: 'JPG, PNG, WebP, HEIC, dan PDF. Kalau filenya gambar, otomatis dikonversi ke JPEG sebelum masuk PDF.' },
@@ -484,21 +491,140 @@ export default function Home() {
         </section>
       </main>
 
-      {/* footer */}
-      <footer className="shimmer-divider">
-        <div className="max-w-5xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-md bg-red-600 flex items-center justify-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-            </div>
-            <span className="text-[11px] text-white/20 font-medium">HakiPDF</span>
+      {/* trust badges strip */}
+      <div className="shimmer-divider" />
+      <section className="py-12">
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="scroll-fade flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] text-white/25 uppercase tracking-wider">
+            <span className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/15"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+              Client-side Processing
+            </span>
+            <span className="w-1 h-1 rounded-full bg-white/10" />
+            <span className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/15"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              100% Gratis
+            </span>
+            <span className="w-1 h-1 rounded-full bg-white/10" />
+            <span className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/15"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+              No Registration
+            </span>
+            <span className="w-1 h-1 rounded-full bg-white/10" />
+            <span className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/15"><polyline points="20 6 9 17 4 12" /></svg>
+              Tanpa Watermark
+            </span>
           </div>
-          <p className="text-[11px] text-white/12">&copy; {new Date().getFullYear()} HakiPDF. Semua hak dilindungi.</p>
+        </div>
+      </section>
+
+      {/* full footer */}
+      <footer className="border-t border-white/[0.06]">
+        <div className="max-w-5xl mx-auto px-5 pt-14 pb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 mb-14">
+            {/* col 1 - brand + alamat */}
+            <div className="col-span-2 sm:col-span-1 scroll-fade" data-scroll-delay="0">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-white/80">HakiPDF</span>
+              </div>
+              <p className="text-[11px] text-white/25 leading-relaxed mb-5">
+                Tool gratis untuk mengubah foto dokumen lamaran kerja menjadi PDF profesional langsung di browser.
+              </p>
+              <div className="flex items-start gap-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/15 mt-0.5 shrink-0">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <p className="text-[11px] text-white/20 leading-relaxed">Indonesia</p>
+              </div>
+            </div>
+
+            {/* col 2 - quick links */}
+            <div className="scroll-fade" data-scroll-delay="60">
+              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-5">Navigasi</p>
+              <ul className="space-y-3">
+                <li><Link href="/buat" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Buat PDF</Link></li>
+                <li><Link href="/#faq" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">FAQ</Link></li>
+                <li><Link href="/#fitur" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Fitur</Link></li>
+                <li><Link href="/#cara-kerja" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Cara Kerja</Link></li>
+              </ul>
+            </div>
+
+            {/* col 3 - dukungan */}
+            <div className="scroll-fade" data-scroll-delay="120">
+              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-5">Dukungan</p>
+              <ul className="space-y-3">
+                <li>
+                  <a href="https://wa.me/6288291414071" target="_blank" rel="noopener noreferrer" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">WhatsApp</a>
+                </li>
+                <li>
+                  <a href="mailto:ardywikasa1@gmail.com" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Email</a>
+                </li>
+                <li>
+                  <a href="#" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Laporkan Bug</a>
+                </li>
+                <li>
+                  <a href="#" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Saran & Masukan</a>
+                </li>
+              </ul>
+            </div>
+
+            {/* col 4 - legal */}
+            <div className="scroll-fade" data-scroll-delay="180">
+              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-5">Legal</p>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Privacy Policy</a></li>
+                <li><a href="#" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Terms of Service</a></li>
+                <li><a href="#" className="text-[11px] text-white/25 hover:text-white/50 transition-colors duration-200 footer-link">Disclaimer</a></li>
+              </ul>
+
+              {/* social links */}
+              <div className="flex items-center gap-3 mt-6 pt-5 border-t border-white/[0.06]">
+                <a href="#" className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.12] transition-all duration-200 group">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 group-hover:text-white/45 transition-colors">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                  </svg>
+                </a>
+                <a href="#" className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.12] transition-all duration-200 group">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 group-hover:text-white/45 transition-colors">
+                    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                  </svg>
+                </a>
+                <a href="#" className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.12] transition-all duration-200 group">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-white/20 group-hover:text-white/45 transition-colors">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.83a8.2 8.2 0 0 0 4.76 1.52V6.84a4.84 4.84 0 0 1-1-.15z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* bottom bar */}
+          <div className="shimmer-divider mb-6" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-[11px] text-white/15">&copy; {new Date().getFullYear()} HakiPDF. Semua hak dilindungi.</p>
+            <p className="text-[10px] text-white/10">Dibuat dengan <span className="text-red-500/40">&#9829;</span> di Indonesia</p>
+          </div>
         </div>
       </footer>
+
+      {/* back to top button */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className={`back-to-top fixed bottom-6 right-6 z-50 w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] backdrop-blur-sm flex items-center justify-center hover:bg-white/[0.1] hover:border-white/[0.15] group ${showTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+        aria-label="Kembali ke atas"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/30 group-hover:text-white/60 transition-colors">
+          <polyline points="18 15 12 9 6 15" />
+        </svg>
+      </button>
     </div>
   )
 }
