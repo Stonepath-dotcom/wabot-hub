@@ -285,7 +285,8 @@ export default function BuatBerkas() {
   if (previewPages && previewPdfUrl) {
     return (
       <div className="min-h-screen flex flex-col bg-[#0a0a0a]">
-        <div className="bg-[#111] border-b border-white/[0.06] px-4 py-2.5 flex items-center justify-between sticky top-0 z-50">
+        {/* preview header */}
+        <div className="bg-[#111] border-b border-white/[0.06] px-5 h-12 flex items-center justify-between sticky top-0 z-50">
           <button
             onClick={handleClosePreview}
             className="flex items-center gap-1.5 text-white/50 hover:text-white/90 text-sm transition-colors"
@@ -293,74 +294,78 @@ export default function BuatBerkas() {
             <ChevronLeft className="w-4 h-4" />
             Kembali
           </button>
-          <span className="text-sm text-white/30">
+          <span className="text-xs text-white/25">
             {previewPages.length} halaman
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handlePrintFromPreview}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
+              className="flex items-center gap-1.5 h-8 px-3 text-xs text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Cetak</span>
             </button>
             <button
               onClick={handleDownloadFromPreview}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 h-8 px-3 text-xs text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
               Download
             </button>
           </div>
         </div>
 
-        <main className="flex-1 p-4 sm:p-8 flex flex-col items-center gap-6">
-          {previewPages.map((page, i) => (
-            <div key={i} className="w-full max-w-[595px]">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs text-white/20 font-medium">{i + 1}</span>
-                <span className="text-xs text-white/10">·</span>
-                <span className="text-xs text-white/30">{page.label}</span>
-              </div>
-              <div className="bg-white rounded-lg overflow-hidden shadow-xl shadow-black/40 border border-white/[0.06]">
-                <div
-                  className="w-full bg-white"
-                  style={{ aspectRatio: '595 / 842' }}
-                >
-                  {page.isPdf ? (
-                    <div className="w-full h-full flex items-center justify-center bg-[#fafafa]">
-                      <span className="text-xs text-gray-400">PDF — {page.label}</span>
-                    </div>
-                  ) : (
-                    <img
-                      src={page.preview}
-                      alt={page.label}
-                      className="w-full h-full object-contain"
-                    />
-                  )}
+        {/* preview pages */}
+        <main className="flex-1 px-4 py-8 sm:px-8 sm:py-12">
+          <div className="flex flex-col items-center gap-8 pb-24">
+            {previewPages.map((page, i) => (
+              <div key={i} className="w-full max-w-[595px]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[11px] text-white/20 font-medium tabular-nums w-4">{i + 1}</span>
+                  <span className="text-[11px] text-white/10">·</span>
+                  <span className="text-[11px] text-white/30 truncate">{page.label}</span>
+                </div>
+                <div className="bg-white rounded-lg overflow-hidden shadow-xl shadow-black/40 border border-white/[0.06]">
+                  <div
+                    className="w-full bg-white"
+                    style={{ aspectRatio: '595 / 842' }}
+                  >
+                    {page.isPdf ? (
+                      <div className="w-full h-full flex items-center justify-center bg-[#fafafa]">
+                        <span className="text-xs text-gray-400">PDF — {page.label}</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={page.preview}
+                        alt={page.label}
+                        className="w-full h-full object-contain"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-
-          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent pt-8 pb-2">
-            <div className="flex items-center gap-2 bg-[#141414] rounded-xl border border-white/[0.08] p-2 shadow-2xl shadow-black/50">
-              <button
-                onClick={handleClosePreview}
-                className="px-3 py-2 text-sm text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={handleDownloadFromPreview}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Download PDF
-              </button>
-            </div>
+            ))}
           </div>
         </main>
+
+        {/* preview bottom bar */}
+        <div className="fixed bottom-0 inset-x-0 bg-[#0a0a0a]/95 backdrop-blur-sm border-t border-white/[0.06] z-50">
+          <div className="max-w-[595px] mx-auto px-4 py-3 flex items-center gap-2">
+            <button
+              onClick={handleClosePreview}
+              className="h-9 px-4 text-sm text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDownloadFromPreview}
+              className="flex-1 h-9 flex items-center justify-center gap-2 px-3 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -371,8 +376,8 @@ export default function BuatBerkas() {
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-white">
       {/* header */}
       <header className="bg-[#0a0a0a] border-b border-white/[0.06] sticky top-0 z-50">
-        <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center gap-3">
-          <a href="/" className="flex items-center gap-2">
+        <div className="max-w-2xl mx-auto px-5 h-12 flex items-center gap-3">
+          <a href="/" className="flex items-center gap-2 shrink-0">
             <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -385,15 +390,17 @@ export default function BuatBerkas() {
           <span className="text-sm text-white/30">Buat Berkas</span>
           <div className="flex-1" />
           {uploadedCount > 0 && (
-            <span className="text-xs text-white/25">
-              {uploadedRequired}/{requiredSlots.length} wajib · {uploadedCount} total
+            <span className="text-[11px] text-white/25 tabular-nums">
+              {uploadedRequired}/{requiredSlots.length} wajib
+              <span className="text-white/10 mx-1.5">·</span>
+              {uploadedCount} total
             </span>
           )}
         </div>
       </header>
 
       <main className="flex-1">
-        <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="max-w-2xl mx-auto px-5 py-6">
           {/* error */}
           {error && (
             <div className="mb-4 px-3 py-2.5 bg-red-950/50 border border-red-900/50 rounded-lg text-sm text-red-400">
@@ -402,7 +409,7 @@ export default function BuatBerkas() {
           )}
 
           {/* upload slots */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             {docSlots.map((slot) => {
               const uploaded = uploads[slot.id]
               const idx = docSlots.indexOf(slot)
@@ -419,7 +426,7 @@ export default function BuatBerkas() {
                   }`}
                 >
                   {/* slot header */}
-                  <div className="flex items-center gap-2 px-4 py-3">
+                  <div className="flex items-center gap-2 px-4 py-3.5">
                     <span className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-white/80">
                         {slot.label}
@@ -447,7 +454,7 @@ export default function BuatBerkas() {
                   </div>
 
                   {/* slot body */}
-                  <div className="px-4 pb-3">
+                  <div className="px-4 pb-4">
                     {uploaded ? (
                       <div className="relative group">
                         <div className="rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0a]">
@@ -523,19 +530,19 @@ export default function BuatBerkas() {
 
       {/* bottom bar */}
       {uploadedCount > 0 && (
-        <div className="sticky bottom-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent pt-6 pb-3 -mx-4 px-4 sm:-mx-0 sm:px-0">
-          <div className="max-w-2xl mx-auto flex items-center gap-2">
+        <div className="fixed bottom-0 inset-x-0 bg-[#0a0a0a]/95 backdrop-blur-sm border-t border-white/[0.06] z-50">
+          <div className="max-w-2xl mx-auto px-5 py-3 flex items-center gap-2.5">
             <button
               onClick={handleResetAll}
-              className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white/30 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors"
+              className="h-10 flex items-center gap-1.5 px-4 text-sm text-white/30 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
               Reset
             </button>
             <button
               onClick={handlePreview}
               disabled={generating}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-white/10 text-white disabled:text-white/30 text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/20"
+              className="flex-1 h-10 flex items-center justify-center gap-2 px-4 bg-red-600 hover:bg-red-700 disabled:bg-white/10 text-white disabled:text-white/30 text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/20"
             >
               {generating ? (
                 <>
