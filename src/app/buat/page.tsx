@@ -284,29 +284,29 @@ export default function BuatBerkas() {
 
   if (previewPages && previewPdfUrl) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-100">
-        <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-50">
+      <div className="min-h-screen flex flex-col bg-[#0a0a0a]">
+        <div className="bg-[#111] border-b border-white/[0.06] px-4 py-2.5 flex items-center justify-between sticky top-0 z-50">
           <button
             onClick={handleClosePreview}
-            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm transition-colors"
+            className="flex items-center gap-1.5 text-white/50 hover:text-white/90 text-sm transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             Kembali
           </button>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-white/30">
             {previewPages.length} halaman
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrintFromPreview}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
             >
               <Printer className="w-4 h-4" />
               <span className="hidden sm:inline">Cetak</span>
             </button>
             <button
               onClick={handleDownloadFromPreview}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
             >
               <Download className="w-4 h-4" />
               Download
@@ -318,17 +318,17 @@ export default function BuatBerkas() {
           {previewPages.map((page, i) => (
             <div key={i} className="w-full max-w-[595px]">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs text-gray-400 font-medium">{i + 1}</span>
-                <span className="text-xs text-gray-400">·</span>
-                <span className="text-xs text-gray-500">{page.label}</span>
+                <span className="text-xs text-white/20 font-medium">{i + 1}</span>
+                <span className="text-xs text-white/10">·</span>
+                <span className="text-xs text-white/30">{page.label}</span>
               </div>
-              <div className="bg-white shadow-sm border border-gray-200 rounded-md overflow-hidden">
+              <div className="bg-white rounded-lg overflow-hidden shadow-xl shadow-black/40 border border-white/[0.06]">
                 <div
                   className="w-full bg-white"
                   style={{ aspectRatio: '595 / 842' }}
                 >
                   {page.isPdf ? (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center bg-[#fafafa]">
                       <span className="text-xs text-gray-400">PDF — {page.label}</span>
                     </div>
                   ) : (
@@ -343,17 +343,17 @@ export default function BuatBerkas() {
             </div>
           ))}
 
-          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-gray-100 via-gray-100 to-transparent pt-8 pb-2">
-            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2 shadow-md">
+          <div className="sticky bottom-0 w-full max-w-[595px] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent pt-8 pb-2">
+            <div className="flex items-center gap-2 bg-[#141414] rounded-xl border border-white/[0.08] p-2 shadow-2xl shadow-black/50">
               <button
                 onClick={handleClosePreview}
-                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                className="px-3 py-2 text-sm text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
               >
                 Edit
               </button>
               <button
                 onClick={handleDownloadFromPreview}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Download PDF
@@ -368,15 +368,24 @@ export default function BuatBerkas() {
   /* ── Upload View ── */
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <a href="/" className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors">HakiPDF</a>
-          <span className="text-gray-300">/</span>
-          <span className="text-sm text-gray-500">Buat Berkas</span>
+    <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-white">
+      {/* header */}
+      <header className="bg-[#0a0a0a] border-b border-white/[0.06] sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center gap-3">
+          <a href="/" className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-white/80 hover:text-white transition-colors">HakiPDF</span>
+          </a>
+          <span className="text-white/10">/</span>
+          <span className="text-sm text-white/30">Buat Berkas</span>
           <div className="flex-1" />
           {uploadedCount > 0 && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-white/25">
               {uploadedRequired}/{requiredSlots.length} wajib · {uploadedCount} total
             </span>
           )}
@@ -385,13 +394,15 @@ export default function BuatBerkas() {
 
       <main className="flex-1">
         <div className="max-w-2xl mx-auto px-4 py-6">
+          {/* error */}
           {error && (
-            <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+            <div className="mb-4 px-3 py-2.5 bg-red-950/50 border border-red-900/50 rounded-lg text-sm text-red-400">
               {error}
             </div>
           )}
 
-          <div className="space-y-2.5">
+          {/* upload slots */}
+          <div className="space-y-2">
             {docSlots.map((slot) => {
               const uploaded = uploads[slot.id]
               const idx = docSlots.indexOf(slot)
@@ -399,76 +410,78 @@ export default function BuatBerkas() {
               return (
                 <div
                   key={slot.id}
-                  className={`bg-white border rounded-lg overflow-hidden transition-colors ${
+                  className={`bg-[#111] border rounded-xl overflow-hidden transition-colors ${
                     dragOver === slot.id
-                      ? 'border-gray-400 bg-gray-50'
+                      ? 'border-white/20 bg-white/[0.04]'
                       : uploaded
-                        ? 'border-gray-300'
-                        : 'border-gray-200'
+                        ? 'border-white/[0.12]'
+                        : 'border-white/[0.06]'
                   }`}
                 >
-                  <div className="flex items-center gap-2 px-3 py-2.5">
+                  {/* slot header */}
+                  <div className="flex items-center gap-2 px-4 py-3">
                     <span className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-gray-800">
+                      <span className="text-sm font-medium text-white/80">
                         {slot.label}
-                        {slot.required && <span className="text-red-400 ml-1">*</span>}
+                        {slot.required && <span className="text-red-500/70 ml-1">*</span>}
                       </span>
-                      <span className="text-xs text-gray-400 ml-2">{slot.desc}</span>
+                      <span className="text-xs text-white/20 ml-2">{slot.desc}</span>
                     </span>
 
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button
                         onClick={() => handleMove(slot.id, 'up')}
                         disabled={idx === 0}
-                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        className="p-1 rounded-md hover:bg-white/[0.06] disabled:opacity-15 disabled:cursor-not-allowed transition-colors"
                       >
-                        <ArrowUp className="w-3.5 h-3.5 text-gray-400" />
+                        <ArrowUp className="w-3.5 h-3.5 text-white/25" />
                       </button>
                       <button
                         onClick={() => handleMove(slot.id, 'down')}
                         disabled={idx === docSlots.length - 1}
-                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        className="p-1 rounded-md hover:bg-white/[0.06] disabled:opacity-15 disabled:cursor-not-allowed transition-colors"
                       >
-                        <ArrowDown className="w-3.5 h-3.5 text-gray-400" />
+                        <ArrowDown className="w-3.5 h-3.5 text-white/25" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="px-3 pb-3">
+                  {/* slot body */}
+                  <div className="px-4 pb-3">
                     {uploaded ? (
                       <div className="relative group">
-                        <div className="rounded-md overflow-hidden border border-gray-200 bg-gray-50">
+                        <div className="rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0a]">
                           <img
                             src={uploaded.preview}
                             alt={slot.label}
                             className="w-full h-40 sm:h-48 object-contain bg-white"
                           />
                         </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors rounded-md flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded-lg flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                           <button
                             onClick={() => handleReplace(slot.id)}
-                            className="px-3 py-1.5 bg-white text-gray-800 rounded-md text-xs font-medium shadow hover:bg-gray-50 transition-colors"
+                            className="px-3 py-1.5 bg-white/10 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-white/20 transition-colors"
                           >
                             Ganti
                           </button>
                           <button
                             onClick={() => handleRemove(slot.id)}
-                            className="px-3 py-1.5 bg-white text-red-600 rounded-md text-xs font-medium shadow hover:bg-red-50 transition-colors"
+                            className="px-3 py-1.5 bg-red-600/80 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
                           >
                             <X className="w-3.5 h-3.5 inline mr-0.5" />
                             Hapus
                           </button>
                         </div>
-                        <p className="mt-1 text-[11px] text-gray-400 truncate">
+                        <p className="mt-1.5 text-[11px] text-white/20 truncate">
                           {uploaded.file.name} · {(uploaded.file.size / 1024).toFixed(0)} KB
                         </p>
                       </div>
                     ) : (
                       <div
-                        className={`border border-dashed rounded-md p-5 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                        className={`border border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
                           dragOver === slot.id
-                            ? 'border-gray-400 bg-gray-50'
-                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                            ? 'border-white/20 bg-white/[0.04]'
+                            : 'border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.02]'
                         }`}
                         onClick={() => {
                           const input = fileInputRefs.current[slot.id]
@@ -481,11 +494,11 @@ export default function BuatBerkas() {
                         onDragLeave={() => setDragOver(null)}
                         onDrop={(e) => handleDrop(slot.id, e)}
                       >
-                        <Upload className="w-5 h-5 text-gray-300 mb-1.5" />
-                        <p className="text-xs text-gray-400">
+                        <Upload className="w-5 h-5 text-white/15 mb-2" />
+                        <p className="text-xs text-white/25">
                           Klik atau drag file ke sini
                         </p>
-                        <p className="text-[11px] text-gray-300 mt-0.5">JPG, PNG, WebP, PDF</p>
+                        <p className="text-[11px] text-white/10 mt-1">JPG, PNG, WebP, PDF</p>
                       </div>
                     )}
                   </div>
@@ -508,12 +521,13 @@ export default function BuatBerkas() {
         </div>
       </main>
 
+      {/* bottom bar */}
       {uploadedCount > 0 && (
-        <div className="sticky bottom-0 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent pt-6 pb-3 -mx-4 px-4 sm:-mx-0 sm:px-0">
+        <div className="sticky bottom-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent pt-6 pb-3 -mx-4 px-4 sm:-mx-0 sm:px-0">
           <div className="max-w-2xl mx-auto flex items-center gap-2">
             <button
               onClick={handleResetAll}
-              className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white/30 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Reset
@@ -521,7 +535,7 @@ export default function BuatBerkas() {
             <button
               onClick={handlePreview}
               disabled={generating}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-white/10 text-white disabled:text-white/30 text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/20"
             >
               {generating ? (
                 <>
