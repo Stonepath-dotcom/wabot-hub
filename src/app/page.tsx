@@ -122,8 +122,81 @@ export default function Home() {
           </div>
         </section>
 
+        {/* feature highlights */}
+        <section className="border-t border-white/[0.06] py-24">
+          <div className="max-w-5xl mx-auto px-5">
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">Kenapa HakiPDF</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                {
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                    </svg>
+                  ),
+                  title: 'Output A4 standar',
+                  desc: 'PDF yang dihasilkan udah sesuai ukuran A4 — siap cetak langsung tanpa perlu resize lagi.',
+                },
+                {
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  ),
+                  title: 'Drag & drop',
+                  desc: 'Cukup drag file dari file manager langsung ke slot yang diinginkan. Gak perlu klik browse.',
+                },
+                {
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  ),
+                  title: 'Gratis selamanya',
+                  desc: 'Tanpa biaya, tanpa langganan, tanpa iklan. Fitur lengkap tanpa paywall.',
+                },
+                {
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                  ),
+                  title: 'Tanpa registrasi',
+                  desc: 'Gak perlu buat akun, gak perlu login. Langsung buka dan pakai.',
+                },
+                {
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                  ),
+                  title: 'Bisa di HP',
+                  desc: 'Responsif dan ringan. Kerja dari mana aja — laptop, tablet, atau HP.',
+                },
+                {
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  ),
+                  title: 'Privasi terjamin',
+                  desc: 'Semua proses lokal di browser. File gak pernah meninggalkan device kamu.',
+                },
+              ].map((item) => (
+                <div key={item.title} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6">
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4 text-white/35">
+                    {item.icon}
+                  </div>
+                  <p className="text-sm font-semibold text-white/85">{item.title}</p>
+                  <p className="text-xs text-white/30 mt-2 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* cara kerja */}
-        <section className="py-24">
+        <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
             <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">Cara kerja</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -136,6 +209,40 @@ export default function Home() {
                   <span className="text-4xl font-bold text-white/[0.05] leading-none block">{item.step}</span>
                   <p className="text-sm font-semibold text-white/90 mt-4">{item.title}</p>
                   <p className="text-xs text-white/35 mt-2.5 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* dokumen didukung */}
+        <section className="border-t border-white/[0.06] py-24">
+          <div className="max-w-5xl mx-auto px-5">
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-4">Dokumen yang didukung</p>
+            <p className="text-sm text-white/40 text-center max-w-md mx-auto mb-14 leading-relaxed">
+              13 slot dokumen yang umum dibutuhkan saat melamar kerja. Wajib dan opsional udah ditandai otomatis.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {[
+                { name: 'Pas Foto', tag: 'opsional' },
+                { name: 'Surat Lamaran', tag: 'wajib' },
+                { name: 'Daftar Riwayat Hidup', tag: 'wajib' },
+                { name: 'KTP', tag: 'wajib' },
+                { name: 'NPWP', tag: 'opsional' },
+                { name: 'Ijazah', tag: 'wajib' },
+                { name: 'SKCK', tag: 'opsional' },
+                { name: 'Kartu Vaksin', tag: 'opsional' },
+                { name: 'Sertifikat', tag: 'opsional' },
+                { name: 'Kartu Keluarga', tag: 'wajib' },
+                { name: 'Akta Kelahiran', tag: 'opsional' },
+                { name: 'SK Sehat', tag: 'opsional' },
+                { name: 'Daftar Nilai', tag: 'opsional' },
+              ].map((doc) => (
+                <div key={doc.name} className="bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3.5 flex items-center justify-between">
+                  <span className="text-xs text-white/60 truncate mr-2">{doc.name}</span>
+                  {doc.tag === 'wajib' && (
+                    <span className="text-[10px] text-red-500/60 bg-red-500/[0.08] px-1.5 py-0.5 rounded-md shrink-0">wajib</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -165,6 +272,47 @@ export default function Home() {
                     <p className="text-xs text-white/40 leading-relaxed">{item.a}</p>
                   </div>
                 </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* testimonials */}
+        <section className="border-t border-white/[0.06] py-24">
+          <div className="max-w-5xl mx-auto px-5">
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">Kata mereka</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                {
+                  name: 'Rina S.',
+                  role: 'Fresh Graduate',
+                  text: 'Gak nyangka se-simple ini. Tinggal upload foto dokumen, langsung jadi PDF. Gak perlu install app apapun.',
+                },
+                {
+                  name: 'Bagus P.',
+                  role: 'Job Seeker',
+                  text: 'Dulu ribet banget scan satu-satu terus gabungin. Ini semua beres di browser dalam hitungan menit.',
+                },
+                {
+                  name: 'Dewi A.',
+                  role: 'Administrasi',
+                  text: 'Yang paling penting file gak dikirim ke server. Buat dokumen pribadi ini sangat nyaman dipakai.',
+                },
+              ].map((item) => (
+                <div key={item.name} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6">
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500/60">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-xs text-white/45 leading-relaxed">&ldquo;{item.text}&rdquo;</p>
+                  <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                    <p className="text-xs font-medium text-white/60">{item.name}</p>
+                    <p className="text-[11px] text-white/25 mt-0.5">{item.role}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -206,6 +354,27 @@ export default function Home() {
                   <p className="text-xs text-white/30 mt-0.5">ardywikasa1@gmail.com</p>
                 </div>
               </a>
+            </div>
+          </div>
+        </section>
+
+        {/* cta */}
+        <section className="border-t border-white/[0.06] py-24">
+          <div className="max-w-5xl mx-auto px-5">
+            <div className="relative bg-gradient-to-b from-red-950/30 to-transparent border border-red-500/[0.08] rounded-3xl px-8 py-16 sm:py-20 text-center overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-600/[0.06] blur-[80px] rounded-full pointer-events-none" />
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white/90 relative">
+                Siap bikin berkas lamaran?
+              </h2>
+              <p className="mt-3 text-sm text-white/35 max-w-sm mx-auto leading-relaxed relative">
+                Gratis, tanpa daftar, langsung pakai. Mulai dari upload sampai download PDF dalam hitungan menit.
+              </p>
+              <Link
+                href="/buat"
+                className="relative inline-flex items-center justify-center h-11 px-8 mt-8 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/25"
+              >
+                Mulai Sekarang
+              </Link>
             </div>
           </div>
         </section>
