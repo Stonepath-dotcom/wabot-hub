@@ -2,19 +2,20 @@ import pg from "pg";
 
 const password = "BT7C7h?GvKq6J+2";
 const encoded = encodeURIComponent(password);
+const ref = "lbugditsdniyphdzgjad";
 
-const hosts = [
-  `postgresql://postgres.lbugditsdniyphdzgjad:${encoded}@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
-  `postgresql://postgres.lbugditsdniyphdzgjad:${encoded}@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-  `postgresql://postgres:${encoded}@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
-  `postgresql://postgres:${encoded}@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+const regions = [
+  "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
+  "ap-south-1", "us-east-1", "us-west-1", "us-west-2",
+  "eu-west-1", "eu-west-2", "eu-central-1", "sa-east-1",
 ];
 
-async function tryConnect(connStr: string, label: string) {
-  const client = new pg.Client({ connectionString: connStr, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+async function tryConnect(region: string) {
+  const connStr = `postgresql://postgres.${ref}:${encoded}@aws-0-${region}.pooler.supabase.com:6543/postgres`;
+  const client = new pg.Client({ connectionString: connStr, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 5000 });
   try {
     await client.connect();
-    console.log(`✅ CONNECTED with: ${label}`);
+    console.log(`✅ CONNECTED! Region: ${region}`);
     
     await client.query(`
       CREATE TABLE IF NOT EXISTS bot_registrations (
@@ -34,7 +35,7 @@ async function tryConnect(connStr: string, label: string) {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
-    console.log("✅ Table bot_registrations created!");
+    console.log("✅ bot_registrations OK");
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -46,33 +47,29 @@ async function tryConnect(connStr: string, label: string) {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
-    console.log("✅ Table audit_logs created!");
+    console.log("✅ audit_logs OK");
 
     try { await client.query(`ALTER TABLE bot_registrations ENABLE ROW LEVEL SECURITY;`); } catch {}
     try { await client.query(`ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;`); } catch {}
-    console.log("✅ RLS enabled!");
-
     try { await client.query(`DROP POLICY IF EXISTS "allow_all" ON bot_registrations;`); } catch {}
     try { await client.query(`DROP POLICY IF EXISTS "allow_all" ON audit_logs;`); } catch {}
     await client.query(`CREATE POLICY "allow_all" ON bot_registrations FOR ALL USING (true) WITH CHECK (true);`);
     await client.query(`CREATE POLICY "allow_all" ON audit_logs FOR ALL USING (true) WITH CHECK (true);`);
-    console.log("✅ Policies created!");
+    console.log("✅ RLS + policies OK");
 
-    const res = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname = 'public';`);
-    console.log("📋 Tables:", res.rows.map((r: { tablename: string }) => r.tablename));
-
+    const res = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname='public';`);
+    console.log("📋 Tables:", res.rows.map((r: any) => r.tablename));
     await client.end();
     return true;
-  } catch (err: unknown) {
-    const e = err as Error;
-    console.log(`❌ ${label}: ${e.message}`);
+  } catch (err: any) {
+    const msg = err.message?.substring(0, 80);
+    console.log(`❌ ${region}: ${msg}`);
     try { await client.end(); } catch {}
     return false;
   }
 }
 
-for (const [i, connStr] of hosts.entries()) {
-  console.log(`\n--- Trying option ${i + 1} ---`);
-  const ok = await tryConnect(connStr, `option ${i + 1}`);
-  if (ok) break;
+for (const region of regions) {
+  console.log(`\n--- ${region} ---`);
+  if (await tryConnect(region)) break;
 }
