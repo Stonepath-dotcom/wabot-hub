@@ -8,13 +8,40 @@ datasource db {
 }
 
 model BotRegistration {
-  id             String   @id @default(cuid())
+  id             String      @id @default(cuid())
+  userId         String?
   name           String
   whatsappNumber String
   email          String?
-  botType        String   @default("customer-service")
+  botType        String      @default("customer-service")
   description    String?
-  status         String   @default("pending")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  status         String      @default("pending")
+  webhookUrl     String?
+  welcomeMessage String?
+  autoReply      String?
+  operatingHours String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  auditLogs      AuditLog[]
+  configs        BotConfig[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  botId     String
+  bot       BotRegistration @relation(fields: [botId], references: [id], onDelete: Cascade)
+  action    String
+  detail    String?
+  userId    String?
+  createdAt DateTime @default(now())
+}
+
+model BotConfig {
+  id        String   @id @default(cuid())
+  botId     String
+  bot       BotRegistration @relation(fields: [botId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
