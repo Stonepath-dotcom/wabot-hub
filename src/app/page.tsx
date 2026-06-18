@@ -7,11 +7,24 @@ import Link from 'next/link'
 export default function Home() {
   const statsRef = useRef<HTMLDivElement>(null)
   const [showTop, setShowTop] = useState(false)
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [loading, setLoading] = useState(true)
 
+  // scroll progress + back to top
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 600)
+    const onScroll = () => {
+      setShowTop(window.scrollY > 600)
+      const h = document.documentElement.scrollHeight - window.innerHeight
+      setScrollProgress(h > 0 ? (window.scrollY / h) * 100 : 0)
+    }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // page loading
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1200)
+    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
@@ -78,6 +91,30 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-white">
+      {/* scroll progress bar */}
+      <div className="fixed top-0 left-0 right-0 z-[60] h-[2px] bg-transparent pointer-events-none">
+        <div className="h-full bg-red-600/80 transition-[width] duration-75 ease-out" style={{ width: scrollProgress + '%' }} />
+      </div>
+
+      {/* loading screen */}
+      {loading && (
+        <div className="fixed inset-0 z-[100] bg-[#0a0a0a] flex flex-col items-center justify-center transition-opacity duration-500">
+          <div className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center animate-subtle-float">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+          <p className="mt-4 text-xs text-white/20 tracking-widest uppercase">HakiPDF</p>
+          <div className="mt-5 w-24 h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+            <div className="h-full bg-red-600/60 rounded-full animate-loading-bar" />
+          </div>
+        </div>
+      )}
+
+      {/* fade in content after load */}
+      {!loading && (
+      <>
       {/* nav */}
       <nav className="border-b border-white/[0.06]">
         <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
@@ -166,6 +203,21 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* browser support */}
+        <div className="max-w-5xl mx-auto px-5 pb-16 flex items-center justify-center gap-4">
+          {[
+            { name: 'Chrome', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z' },
+            { name: 'Firefox', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15.5v-2.2l2.1-2.1 1.4 1.4-2.1 2.1-1.4-.2zm3.7-3.7L14.3 12.4l2.1-2.1c.4-.4.4-1 0-1.4l-1.6-1.6c-.4-.4-1-.4-1.4 0l-2.1 2.1L9.7 7.9c-.4-.4-1-.4-1.4 0L6.7 9.5c-.4.4-.4 1 0 1.4l2.1 2.1-2.1 2.1c-.4.4-.4 1 0 1.4l1.6 1.6c.4.4 1 .4 1.4 0l2.1-2.1 1.4 1.4c.2.2.4.3.7.3.3 0 .5-.1.7-.3l2.1-2.1c.4-.4.4-1 0-1.4z' },
+            { name: 'Safari', path: 'M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83' },
+            { name: 'Edge', path: 'M9.5 12c0 .83-.67 1.5-1.5 1.5S6.5 12.83 6.5 12s.67-1.5 1.5-1.5S9.5 11.17 9.5 12zm5-1.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z' },
+          ].map((b) => (
+            <div key={b.name} className="w-5 h-5 text-white/10 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={b.path} /></svg>
+            </div>
+          ))}
+          <span className="text-[10px] text-white/15">Support semua browser</span>
+        </div>
 
         {/* shimmer divider */}
         <div className="shimmer-divider" />
@@ -614,6 +666,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      </>
+      )}
 
       {/* back to top button */}
       <button
