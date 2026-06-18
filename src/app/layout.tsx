@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Berkas Lamaran Kerja",
-  description: "Upload foto dokumen lamaran, cetak jadi PDF",
+  title: "HakiPDF — Upload Dokumen, Jadi PDF",
+  description: "Upload foto dokumen lamaran kerja, urutkan, langsung jadi PDF. Gratis, tanpa upload ke server.",
 };
 
 export default function RootLayout({
@@ -19,6 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
+      <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      </head>
       <body className={`${inter.variable} antialiased`}>
         {children}
       </body>
