@@ -26,20 +26,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE bot_registrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "all_bot_regs" ON bot_registrations USING (true) WITH CHECK (true);
-CREATE POLICY "all_audit_logs" ON audit_logs USING (true) WITH CHECK (true);
-
-CREATE INDEX IF NOT EXISTS idx_bot_regs_user_id ON bot_registrations(user_id);
-CREATE INDEX IF NOT EXISTS idx_bot_regs_status ON bot_registrations(status);
-CREATE INDEX IF NOT EXISTS idx_bot_regs_created_at ON bot_registrations(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_bot_id ON audit_logs(bot_id);
-
 GRANT ALL ON bot_registrations TO anon, authenticated, service_role;
-GRANT ALL ON audit_logs TO anon, authenticated, service_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;`;
+GRANT ALL ON audit_logs TO anon, authenticated, service_role;`;
 
 export async function GET() {
   return new NextResponse(SQL, {
