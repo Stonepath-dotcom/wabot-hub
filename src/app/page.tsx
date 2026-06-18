@@ -1,4 +1,5 @@
 "use client";
+// v2-supabase-migrated
 
 import { useState, useEffect, useCallback, useRef, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -111,6 +112,20 @@ export default function Home() {
 
   const formRef = useRef<HTMLDivElement>(null);
 
+  /* ─── Runtime Supabase client (bypasses build-time env issue) ─── */
+  const [sbClient, setSbClient] = useState<any>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/config');
+        const { supabaseUrl, supabaseAnonKey } = await res.json();
+        const { createClient } = await import('@supabase/supabase-js');
+        setSbClient(createClient(supabaseUrl, supabaseAnonKey));
+      } catch {}
+    })();
+  }, []);
+
   /* ─── Init auth ─── */
   useEffect(() => {
     try {
@@ -174,7 +189,7 @@ export default function Home() {
 
     /* Try Supabase first */
     try {
-      const { supabase } = await import("@/lib/supabase");
+      const supabase = sbClient || (await import("@/lib/supabase")).supabase;
       if (supabase) {
         const result =
           mode === "register"
