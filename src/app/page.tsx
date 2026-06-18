@@ -1,7 +1,35 @@
+'use client'
+
+import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
 export default function Home() {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement
+            const delay = el.dataset.scrollDelay
+            if (delay) {
+              el.style.transitionDelay = delay + 'ms'
+            }
+            el.classList.add('scroll-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.08, rootMargin: '0px 0px -30px 0px' }
+    )
+
+    document.querySelectorAll('.scroll-fade, .scroll-fade-scale').forEach((el) => {
+      observer.observe(el)
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-white">
       {/* nav */}
@@ -68,18 +96,11 @@ export default function Home() {
             {/* phone mockup */}
             <div className="flex justify-center lg:justify-end animate-fade-in-right">
               <div className="relative">
-                {/* glow behind phone */}
                 <div className="absolute -inset-14 bg-red-600/[0.07] blur-[60px] rounded-full pointer-events-none animate-glow-pulse" />
-
-                {/* phone frame */}
                 <div className="relative w-[280px] sm:w-[300px] lg:w-[310px] rounded-[44px] p-[2px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] shadow-2xl shadow-black/80 animate-phone-float">
-                  {/* phone body */}
                   <div className="relative bg-[#0f0f0f] rounded-[42px] p-[5px]">
-                    {/* notch */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[26px] bg-[#0f0f0f] rounded-b-2xl z-10" />
                     <div className="absolute top-[7px] left-1/2 -translate-x-1/2 w-16 h-[18px] bg-black rounded-full z-10" />
-
-                    {/* screen */}
                     <div className="rounded-[37px] overflow-hidden bg-black h-[520px] sm:h-[560px] lg:h-[580px] relative">
                       <Image
                         src="/phone-mockup.png"
@@ -89,16 +110,10 @@ export default function Home() {
                         className="w-full h-full object-cover object-top"
                         priority
                       />
-
-                      {/* bottom fade */}
                       <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
                     </div>
-
-                    {/* home indicator */}
                     <div className="absolute bottom-[9px] left-1/2 -translate-x-1/2 w-28 h-[4px] bg-white/10 rounded-full" />
                   </div>
-
-                  {/* reflection shine */}
                   <div className="absolute top-3 left-3 w-20 h-40 bg-gradient-to-b from-white/[0.06] to-transparent rounded-full blur-xl pointer-events-none rotate-[-15deg]" />
                 </div>
               </div>
@@ -113,8 +128,8 @@ export default function Home() {
               { value: '13', label: 'Slot dokumen' },
               { value: '100%', label: 'Client-side' },
               { value: '0', label: 'Data dikirim' },
-            ].map((stat) => (
-              <div key={stat.label}>
+            ].map((stat, i) => (
+              <div key={stat.label} className="scroll-fade" data-scroll-delay={i * 80}>
                 <p className="text-xl sm:text-2xl font-bold text-white/90">{stat.value}</p>
                 <p className="text-[11px] text-white/30 mt-1.5">{stat.label}</p>
               </div>
@@ -125,7 +140,7 @@ export default function Home() {
         {/* feature highlights */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">Kenapa HakiPDF</p>
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Kenapa HakiPDF</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 {
@@ -182,8 +197,8 @@ export default function Home() {
                   title: 'Privasi terjamin',
                   desc: 'Semua proses lokal di browser. File gak pernah meninggalkan device kamu.',
                 },
-              ].map((item) => (
-                <div key={item.title} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6">
+              ].map((item, i) => (
+                <div key={item.title} className="scroll-fade bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 80}>
                   <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4 text-white/35">
                     {item.icon}
                   </div>
@@ -198,14 +213,14 @@ export default function Home() {
         {/* cara kerja */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">Cara kerja</p>
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Cara kerja</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {[
                 { step: '01', title: 'Upload', desc: 'Foto dokumen ke slot yang sesuai. Didukung JPG, PNG, WebP, dan PDF.' },
                 { step: '02', title: 'Urutkan', desc: 'Atur urutan dokumen pakai tombol panah. Wajib dan opsional udah ditandai.' },
                 { step: '03', title: 'Download', desc: 'Preview hasilnya dulu. Kalau udah pas, download atau langsung cetak.' },
-              ].map((item) => (
-                <div key={item.step} className="relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-7">
+              ].map((item, i) => (
+                <div key={item.step} className="scroll-fade relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-7" data-scroll-delay={i * 100}>
                   <span className="text-4xl font-bold text-white/[0.05] leading-none block">{item.step}</span>
                   <p className="text-sm font-semibold text-white/90 mt-4">{item.title}</p>
                   <p className="text-xs text-white/35 mt-2.5 leading-relaxed">{item.desc}</p>
@@ -218,8 +233,8 @@ export default function Home() {
         {/* dokumen didukung */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-4">Dokumen yang didukung</p>
-            <p className="text-sm text-white/40 text-center max-w-md mx-auto mb-14 leading-relaxed">
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-4 scroll-fade">Dokumen yang didukung</p>
+            <p className="text-sm text-white/40 text-center max-w-md mx-auto mb-14 leading-relaxed scroll-fade" data-scroll-delay="50">
               13 slot dokumen yang umum dibutuhkan saat melamar kerja. Wajib dan opsional udah ditandai otomatis.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -237,8 +252,8 @@ export default function Home() {
                 { name: 'Akta Kelahiran', tag: 'opsional' },
                 { name: 'SK Sehat', tag: 'opsional' },
                 { name: 'Daftar Nilai', tag: 'opsional' },
-              ].map((doc) => (
-                <div key={doc.name} className="bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3.5 flex items-center justify-between">
+              ].map((doc, i) => (
+                <div key={doc.name} className="scroll-fade bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3.5 flex items-center justify-between" data-scroll-delay={i * 35}>
                   <span className="text-xs text-white/60 truncate mr-2">{doc.name}</span>
                   {doc.tag === 'wajib' && (
                     <span className="text-[10px] text-red-500/60 bg-red-500/[0.08] px-1.5 py-0.5 rounded-md shrink-0">wajib</span>
@@ -252,7 +267,7 @@ export default function Home() {
         {/* faq */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">FAQ</p>
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">FAQ</p>
             <div className="space-y-3">
               {[
                 { q: 'Format file apa aja yang didukung?', a: 'JPG, PNG, WebP, HEIC, dan PDF. Kalau filenya gambar, otomatis dikonversi ke JPEG sebelum masuk PDF.' },
@@ -260,8 +275,8 @@ export default function Home() {
                 { q: 'Ada batas ukuran file?', a: 'Gak ada batas dari sisi aplikasi. Tapi browser biasanya bisa handle file sampai ratusan MB tanpa masalah.' },
                 { q: 'Bisa edit urutan dokumen?', a: 'Bisa. Setiap slot ada tombol panah atas/bawah buat pindah posisi. Dokumen yang sudah diurutkan akan mengikuti urutan itu di PDF.' },
                 { q: 'Ini gratis?', a: 'Ya, sepenuhnya gratis. Gak perlu daftar, gak perlu login, gak ada iklan.' },
-              ].map((item) => (
-                <details key={item.q} className="group bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
+              ].map((item, i) => (
+                <details key={item.q} className="scroll-fade group bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden" data-scroll-delay={i * 60}>
                   <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                     <span className="text-sm text-white/80 pr-4">{item.q}</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 shrink-0 transition-transform group-open:rotate-180">
@@ -280,7 +295,7 @@ export default function Home() {
         {/* testimonials */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14">Kata mereka</p>
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Kata mereka</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 {
@@ -298,8 +313,8 @@ export default function Home() {
                   role: 'Administrasi',
                   text: 'Yang paling penting file gak dikirim ke server. Buat dokumen pribadi ini sangat nyaman dipakai.',
                 },
-              ].map((item) => (
-                <div key={item.name} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6">
+              ].map((item, i) => (
+                <div key={item.name} className="scroll-fade bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 100}>
                   <div className="flex gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500/60">
@@ -321,13 +336,14 @@ export default function Home() {
         {/* contact */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-12">Hubungi Kami</p>
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-12 scroll-fade">Hubungi Kami</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href="https://wa.me/6288291414071"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                className="scroll-fade flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                data-scroll-delay="0"
               >
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-green-500/80 group-hover:text-green-500 transition-colors">
@@ -341,7 +357,8 @@ export default function Home() {
               </a>
               <a
                 href="mailto:ardywikasa1@gmail.com"
-                className="flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                className="scroll-fade flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                data-scroll-delay="80"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center shrink-0">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 group-hover:text-white/60 transition-colors">
@@ -361,8 +378,8 @@ export default function Home() {
         {/* cta */}
         <section className="border-t border-white/[0.06] py-24">
           <div className="max-w-5xl mx-auto px-5">
-            <div className="relative bg-gradient-to-b from-red-950/30 to-transparent border border-red-500/[0.08] rounded-3xl px-8 py-16 sm:py-20 text-center overflow-hidden">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-600/[0.06] blur-[80px] rounded-full pointer-events-none" />
+            <div className="scroll-fade-scale relative bg-gradient-to-b from-red-950/30 to-transparent border border-red-500/[0.08] rounded-3xl px-8 py-16 sm:py-20 text-center overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-600/[0.06] blur-[80px] rounded-full pointer-events-none animate-glow-pulse" />
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white/90 relative">
                 Siap bikin berkas lamaran?
               </h2>
@@ -382,7 +399,7 @@ export default function Home() {
         {/* privacy */}
         <section className="border-t border-white/[0.06] py-20">
           <div className="max-w-5xl mx-auto px-5">
-            <div className="max-w-md mx-auto text-center">
+            <div className="scroll-fade max-w-md mx-auto text-center">
               <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-5">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/25">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
