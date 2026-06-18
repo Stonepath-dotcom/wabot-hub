@@ -129,7 +129,7 @@ export default function Home() {
               { value: '100%', label: 'Client-side' },
               { value: '0', label: 'Data dikirim' },
             ].map((stat, i) => (
-              <div key={stat.label} className="scroll-fade" data-scroll-delay={i * 80}>
+              <div key={stat.label} className="scroll-fade stat-hover" data-scroll-delay={i * 80}>
                 <p className="text-xl sm:text-2xl font-bold text-white/90">{stat.value}</p>
                 <p className="text-[11px] text-white/30 mt-1.5">{stat.label}</p>
               </div>
@@ -198,8 +198,8 @@ export default function Home() {
                   desc: 'Semua proses lokal di browser. File gak pernah meninggalkan device kamu.',
                 },
               ].map((item, i) => (
-                <div key={item.title} className="scroll-fade bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 80}>
-                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4 text-white/35">
+                <div key={item.title} className="scroll-fade card-hover group bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 80}>
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4 text-white/35 feature-icon">
                     {item.icon}
                   </div>
                   <p className="text-sm font-semibold text-white/85">{item.title}</p>
@@ -220,7 +220,7 @@ export default function Home() {
                 { step: '02', title: 'Urutkan', desc: 'Atur urutan dokumen pakai tombol panah. Wajib dan opsional udah ditandai.' },
                 { step: '03', title: 'Download', desc: 'Preview hasilnya dulu. Kalau udah pas, download atau langsung cetak.' },
               ].map((item, i) => (
-                <div key={item.step} className="scroll-fade relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-7" data-scroll-delay={i * 100}>
+                <div key={item.step} className="scroll-fade card-hover relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-7" data-scroll-delay={i * 100}>
                   <span className="text-4xl font-bold text-white/[0.05] leading-none block">{item.step}</span>
                   <p className="text-sm font-semibold text-white/90 mt-4">{item.title}</p>
                   <p className="text-xs text-white/35 mt-2.5 leading-relaxed">{item.desc}</p>
@@ -253,7 +253,7 @@ export default function Home() {
                 { name: 'SK Sehat', tag: 'opsional' },
                 { name: 'Daftar Nilai', tag: 'opsional' },
               ].map((doc, i) => (
-                <div key={doc.name} className="scroll-fade bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3.5 flex items-center justify-between" data-scroll-delay={i * 35}>
+                <div key={doc.name} className="scroll-fade doc-hover bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3.5 flex items-center justify-between" data-scroll-delay={i * 35}>
                   <span className="text-xs text-white/60 truncate mr-2">{doc.name}</span>
                   {doc.tag === 'wajib' && (
                     <span className="text-[10px] text-red-500/60 bg-red-500/[0.08] px-1.5 py-0.5 rounded-md shrink-0">wajib</span>
@@ -276,7 +276,7 @@ export default function Home() {
                 { q: 'Bisa edit urutan dokumen?', a: 'Bisa. Setiap slot ada tombol panah atas/bawah buat pindah posisi. Dokumen yang sudah diurutkan akan mengikuti urutan itu di PDF.' },
                 { q: 'Ini gratis?', a: 'Ya, sepenuhnya gratis. Gak perlu daftar, gak perlu login, gak ada iklan.' },
               ].map((item, i) => (
-                <details key={item.q} className="scroll-fade group bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden" data-scroll-delay={i * 60}>
+                <details key={item.q} className="scroll-fade faq-hover bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden" data-scroll-delay={i * 60}>
                   <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                     <span className="text-sm text-white/80 pr-4">{item.q}</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 shrink-0 transition-transform group-open:rotate-180">
@@ -314,7 +314,7 @@ export default function Home() {
                   text: 'Yang paling penting file gak dikirim ke server. Buat dokumen pribadi ini sangat nyaman dipakai.',
                 },
               ].map((item, i) => (
-                <div key={item.name} className="scroll-fade bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 100}>
+                <div key={item.name} className="scroll-fade card-hover bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 100}>
                   <div className="flex gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500/60">
@@ -342,7 +342,7 @@ export default function Home() {
                 href="https://wa.me/6288291414071"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="scroll-fade flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                className="scroll-fade contact-hover flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] group"
                 data-scroll-delay="0"
               >
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
@@ -357,7 +357,7 @@ export default function Home() {
               </a>
               <a
                 href="mailto:ardywikasa1@gmail.com"
-                className="scroll-fade flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                className="scroll-fade contact-hover flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.1] group"
                 data-scroll-delay="80"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center shrink-0">
@@ -388,7 +388,7 @@ export default function Home() {
               </p>
               <Link
                 href="/buat"
-                className="relative inline-flex items-center justify-center h-11 px-8 mt-8 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/25"
+                className="animate-cta-glow relative inline-flex items-center justify-center h-11 px-8 mt-8 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/25"
               >
                 Mulai Sekarang
               </Link>
@@ -400,7 +400,7 @@ export default function Home() {
         <section className="border-t border-white/[0.06] py-20">
           <div className="max-w-5xl mx-auto px-5">
             <div className="scroll-fade max-w-md mx-auto text-center">
-              <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-5">
+              <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-5 animate-subtle-float">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/25">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
