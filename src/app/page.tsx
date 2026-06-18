@@ -391,12 +391,12 @@ export default function Home() {
         <section className="py-24">
           <div className="max-w-5xl mx-auto px-5">
             <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-12 scroll-fade">Hubungi Kami</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4 max-w-2xl mx-auto">
               <a
                 href="https://wa.me/6288291414071"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="scroll-fade-left contact-hover flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-green-500/[0.06] hover:border-green-500/[0.15] group"
+                className="scroll-fade contact-hover flex items-center gap-3.5 px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-green-500/[0.06] hover:border-green-500/[0.15] group"
                 data-scroll-delay="0"
               >
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 transition-all duration-300 group-hover:bg-green-500/20 group-hover:scale-110">
@@ -411,8 +411,8 @@ export default function Home() {
               </a>
               <a
                 href="mailto:ardywikasa1@gmail.com"
-                className="scroll-fade-right contact-hover flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.12] group"
-                data-scroll-delay="100"
+                className="scroll-fade contact-hover flex items-center gap-3.5 px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.12] group"
+                data-scroll-delay="80"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center shrink-0 transition-all duration-300 group-hover:bg-white/[0.08] group-hover:scale-110">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 group-hover:text-white/60 transition-colors">
@@ -425,6 +425,21 @@ export default function Home() {
                   <p className="text-xs text-white/30 mt-0.5">ardywikasa1@gmail.com</p>
                 </div>
               </a>
+              <div
+                className="scroll-fade contact-hover flex items-center gap-3.5 px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl"
+                data-scroll-delay="160"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center shrink-0 text-white/35">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-white/80 font-medium">Lokasi</p>
+                  <p className="text-xs text-white/30 mt-0.5">Indonesia</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -471,8 +486,17 @@ export default function Home() {
 
       {/* footer */}
       <footer className="shimmer-divider">
-        <div className="max-w-5xl mx-auto px-5 h-12 flex items-center">
-          <span className="text-[11px] text-white/15">HakiPDF</span>
+        <div className="max-w-5xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-red-600 flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <span className="text-[11px] text-white/20 font-medium">HakiPDF</span>
+          </div>
+          <p className="text-[11px] text-white/12">&copy; {new Date().getFullYear()} HakiPDF. Semua hak dilindungi.</p>
         </div>
       </footer>
     </div>
