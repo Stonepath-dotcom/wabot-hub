@@ -32,7 +32,7 @@ export default function Home() {
         <section className="max-w-5xl mx-auto px-5 pt-16 sm:pt-24 pb-20 sm:pb-28">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* text */}
-            <div>
+            <div className="animate-fade-in-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-7">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                 <span className="text-[11px] text-white/50">Gratis · Tanpa server · Output A4</span>
@@ -66,13 +66,13 @@ export default function Home() {
             </div>
 
             {/* phone mockup */}
-            <div className="flex justify-center lg:justify-end">
+            <div className="flex justify-center lg:justify-end animate-fade-in-right">
               <div className="relative">
                 {/* glow behind phone */}
-                <div className="absolute -inset-12 bg-red-600/[0.08] blur-3xl rounded-full pointer-events-none" />
+                <div className="absolute -inset-12 bg-red-600/[0.08] blur-3xl rounded-full pointer-events-none animate-glow-pulse" />
 
                 {/* phone frame */}
-                <div className="relative w-[300px] sm:w-[340px] lg:w-[360px] bg-[#1a1a1a] rounded-[40px] p-[7px] shadow-2xl shadow-black/70 border border-white/[0.08]">
+                <div className="relative w-[300px] sm:w-[340px] lg:w-[360px] bg-[#1a1a1a] rounded-[40px] p-[7px] shadow-2xl shadow-black/70 border border-white/[0.08] animate-phone-float">
                   {/* notch */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-7 bg-[#1a1a1a] rounded-b-2xl z-10" />
 
