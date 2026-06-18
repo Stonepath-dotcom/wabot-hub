@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { PDFDocument } from 'pdf-lib'
 import {
   ArrowUp,
@@ -13,6 +13,10 @@ import {
   Printer,
   ChevronLeft,
   Loader2,
+  RotateCw,
+  ZoomIn,
+  FileText,
+  ImageIcon,
 } from 'lucide-react'
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -28,6 +32,7 @@ interface UploadedFile {
   file: File
   preview: string
   dataUrl: string
+  rotation: number
 }
 
 interface PreviewPage {
@@ -35,6 +40,26 @@ interface PreviewPage {
   preview: string
   isPdf: boolean
 }
+
+type PaperSize = 'a4' | 'letter' | 'f4'
+
+const PAPER_DIMS: Record<PaperSize, [number, number]> = {
+  a4: [595, 842],
+  letter: [612, 792],
+  f4: [609, 936],
+}
+
+const PAPER_LABELS: Record<PaperSize, string> = {
+  a4: 'A4',
+  letter: 'Letter',
+  f4: 'F4/Folio',
+}
+
+const QUALITY_OPTIONS = [
+  { value: 0.5, label: 'Kecil', desc: 'File ringan' },
+  { value: 0.75, label: 'Sedang', desc: 'Seimbang' },
+  { value: 0.92, label: 'Tinggi', desc: 'Kualitas maksimal' },
+]
 
 /* ─── Document Slots ────────────────────────────────── */
 
@@ -65,22 +90,29 @@ function fileToDataUrl(file: File): Promise<string> {
   })
 }
 
-function imageToJpegBytes(dataUrl: string): Promise<Uint8Array> {
+function imageToJpegBytes(dataUrl: string, rotation: number, quality: number): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
+      const isRotated = rotation === 90 || rotation === 270
+      canvas.width = isRotated ? img.naturalHeight : img.naturalWidth
+      canvas.height = isRotated ? img.naturalWidth : img.naturalHeight
       const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0)
+
+      ctx.save()
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      ctx.rotate((rotation * Math.PI) / 180)
+      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
+      ctx.restore()
+
       canvas.toBlob(
         (blob) => {
           if (!blob) { reject(new Error('Canvas toBlob gagal')); return }
           blob.arrayBuffer().then((buf) => resolve(new Uint8Array(buf))).catch(reject)
         },
         'image/jpeg',
-        0.92
+        quality
       )
     }
     img.onerror = () => reject(new Error('Gambar tidak bisa dibaca'))
@@ -88,13 +120,18 @@ function imageToJpegBytes(dataUrl: string): Promise<Uint8Array> {
   })
 }
 
-async function addImageToPdf(pdfDoc: PDFDocument, dataUrl: string) {
-  const jpgBytes = await imageToJpegBytes(dataUrl)
+async function addImageToPdf(
+  pdfDoc: PDFDocument,
+  dataUrl: string,
+  rotation: number,
+  quality: number,
+  paperSize: PaperSize
+) {
+  const jpgBytes = await imageToJpegBytes(dataUrl, rotation, quality)
   const image = await pdfDoc.embedJpg(jpgBytes)
 
-  const page = pdfDoc.addPage([595, 842])
-  const pw = 595
-  const ph = 842
+  const [pw, ph] = PAPER_DIMS[paperSize]
+  const page = pdfDoc.addPage([pw, ph])
   const { width: iw, height: ih } = image.scale(1)
 
   const scale = Math.min(pw / iw, ph / ih)
@@ -114,13 +151,82 @@ export default function BuatBerkas() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  const [globalDrag, setGlobalDrag] = useState(false)
   const [previewPages, setPreviewPages] = useState<PreviewPage[] | null>(null)
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+  const [paperSize, setPaperSize] = useState<PaperSize>('a4')
+  const [quality, setQuality] = useState(0.75)
+  const [zoomSlot, setZoomSlot] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const uploadedCount = Object.keys(uploads).length
   const requiredSlots = docSlots.filter((s) => s.required)
   const uploadedRequired = requiredSlots.filter((s) => uploads[s.id]).length
+
+  /* ── Global drag & drop ── */
+  useEffect(() => {
+    let dragCount = 0
+
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      dragCount++
+      if (e.dataTransfer?.types.includes('Files')) setGlobalDrag(true)
+    }
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      dragCount--
+      if (dragCount <= 0) { dragCount = 0; setGlobalDrag(false) }
+    }
+    const onDragOver = (e: DragEvent) => e.preventDefault()
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault()
+      dragCount = 0
+      setGlobalDrag(false)
+
+      const files = Array.from(e.dataTransfer?.files || [])
+      const imagePdfFiles = files.filter(
+        (f) => f.type.startsWith('image/') || f.type === 'application/pdf' || /\.(jpg|jpeg|png|webp|heic|heif|bmp|gif|tiff?|pdf)$/i.test(f.name)
+      )
+
+      if (imagePdfFiles.length === 0) return
+
+      // auto-assign files to empty slots
+      const emptySlots = docSlots.filter((s) => !uploads[s.id])
+      const toAssign = imagePdfFiles.slice(0, emptySlots.length)
+
+      if (toAssign.length < imagePdfFiles.length) {
+        setError(`${imagePdfFiles.length - toAssign.length} file tidak bisa ditambahkan — slot sudah penuh.`)
+      }
+
+      toAssign.forEach((file, i) => {
+        const slot = emptySlots[i]
+        if (!slot) return
+        const isImage = file.type.startsWith('image/')
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+        if (!isImage && !isPdf) return
+        fileToDataUrl(file).then((dataUrl) => {
+          const preview = URL.createObjectURL(file)
+          setUploads((prev) => ({
+            ...prev,
+            [slot.id]: { file, preview, dataUrl, rotation: 0 },
+          }))
+        })
+      })
+    }
+
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('drop', onDrop)
+
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('drop', onDrop)
+    }
+  }, [uploads])
 
   /* ── Upload handlers ── */
 
@@ -130,13 +236,14 @@ export default function BuatBerkas() {
     if (!isImage && !isPdf) return
     const dataUrl = await fileToDataUrl(file)
     const preview = URL.createObjectURL(file)
-    setUploads((prev) => ({ ...prev, [slotId]: { file, preview, dataUrl } }))
+    setUploads((prev) => ({ ...prev, [slotId]: { file, preview, dataUrl, rotation: 0 } }))
     setError(null)
   }, [])
 
   const handleDrop = useCallback(
     (slotId: string, e: React.DragEvent) => {
       e.preventDefault()
+      e.stopPropagation()
       setDragOver(null)
       const file = e.dataTransfer.files[0]
       if (file) handleFile(slotId, file)
@@ -170,6 +277,17 @@ export default function BuatBerkas() {
     setError(null)
     setProgress(0)
   }, [uploads])
+
+  const handleRotate = useCallback((slotId: string) => {
+    setUploads((prev) => {
+      const u = prev[slotId]
+      if (!u) return prev
+      return {
+        ...prev,
+        [slotId]: { ...u, rotation: (u.rotation + 90) % 360 },
+      }
+    })
+  }, [])
 
   /* ── Move up / down ── */
 
@@ -227,7 +345,7 @@ export default function BuatBerkas() {
               pages.push({ label: `${slot.label} (hal. ${copied.indexOf(p) + 1})`, preview: u.preview, isPdf: true })
             })
           } else {
-            await addImageToPdf(pdfDoc, u.dataUrl)
+            await addImageToPdf(pdfDoc, u.dataUrl, u.rotation, quality, paperSize)
             pages.push({ label: slot.label, preview: u.preview, isPdf: false })
           }
         } catch (err) {
@@ -256,17 +374,17 @@ export default function BuatBerkas() {
     } finally {
       setGenerating(false)
     }
-  }, [uploads, uploadedCount])
+  }, [uploads, uploadedCount, quality, paperSize])
 
   const handleDownloadFromPreview = useCallback(() => {
     if (!previewPdfUrl) return
     const a = document.createElement('a')
     a.href = previewPdfUrl
-    a.download = 'Berkas_Lamaran_Kerja.pdf'
+    a.download = `Berkas_Lamaran_${PAPER_LABELS[paperSize]}.pdf`
     document.body.appendChild(a)
     a.click()
     setTimeout(() => document.body.removeChild(a), 500)
-  }, [previewPdfUrl])
+  }, [previewPdfUrl, paperSize])
 
   const handlePrintFromPreview = useCallback(() => {
     if (!previewPdfUrl) return
@@ -279,6 +397,11 @@ export default function BuatBerkas() {
     setPreviewPages(null)
     setPreviewPdfUrl(null)
   }, [previewPdfUrl])
+
+  /* ── Zoom Modal ── */
+
+  const zoomedUpload = zoomSlot ? uploads[zoomSlot] : null
+  const zoomSlotData = zoomSlot ? docSlots.find((s) => s.id === zoomSlot) : null
 
   /* ── Preview View ── */
 
@@ -295,7 +418,7 @@ export default function BuatBerkas() {
             Kembali
           </button>
           <span className="text-xs text-white/25">
-            {previewPages.length} halaman
+            {previewPages.length} halaman · {PAPER_LABELS[paperSize]}
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -328,7 +451,7 @@ export default function BuatBerkas() {
                 <div className="bg-white rounded-lg overflow-hidden shadow-xl shadow-black/40 border border-white/[0.06]">
                   <div
                     className="w-full bg-white"
-                    style={{ aspectRatio: '595 / 842' }}
+                    style={{ aspectRatio: `${PAPER_DIMS[paperSize][0]} / ${PAPER_DIMS[paperSize][1]}` }}
                   >
                     {page.isPdf ? (
                       <div className="w-full h-full flex items-center justify-center bg-[#fafafa]">
@@ -413,6 +536,7 @@ export default function BuatBerkas() {
             {docSlots.map((slot) => {
               const uploaded = uploads[slot.id]
               const idx = docSlots.indexOf(slot)
+              const isPdf = uploaded?.file.type === 'application/pdf' || uploaded?.file.name.endsWith('.pdf')
 
               return (
                 <div
@@ -457,30 +581,60 @@ export default function BuatBerkas() {
                   <div className="px-4 pb-4">
                     {uploaded ? (
                       <div className="relative group">
-                        <div className="rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0a]">
-                          <img
-                            src={uploaded.preview}
-                            alt={slot.label}
-                            className="w-full h-40 sm:h-48 object-contain bg-white"
-                          />
+                        <div
+                          className="rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0a] cursor-pointer"
+                          onClick={() => setZoomSlot(slot.id)}
+                        >
+                          {isPdf ? (
+                            <div className="w-full h-40 sm:h-48 flex flex-col items-center justify-center bg-[#fafafa]">
+                              <FileText className="w-8 h-8 text-gray-300 mb-2" />
+                              <span className="text-xs text-gray-400">PDF Document</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={uploaded.preview}
+                              alt={slot.label}
+                              className="w-full h-40 sm:h-48 object-contain bg-white"
+                              style={{ transform: `rotate(${uploaded.rotation}deg)`, transition: 'transform 0.3s ease' }}
+                            />
+                          )}
                         </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded-lg flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded-lg flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                          <button
+                            onClick={() => setZoomSlot(slot.id)}
+                            className="p-2 bg-white/10 backdrop-blur-sm text-white rounded-lg hover:bg-white/20 transition-colors"
+                            title="Zoom"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </button>
+                          {!isPdf && (
+                            <button
+                              onClick={() => handleRotate(slot.id)}
+                              className="p-2 bg-white/10 backdrop-blur-sm text-white rounded-lg hover:bg-white/20 transition-colors"
+                              title="Putar 90°"
+                            >
+                              <RotateCw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleReplace(slot.id)}
-                            className="px-3 py-1.5 bg-white/10 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-white/20 transition-colors"
+                            className="px-3 py-2 bg-white/10 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-white/20 transition-colors"
                           >
                             Ganti
                           </button>
                           <button
                             onClick={() => handleRemove(slot.id)}
-                            className="px-3 py-1.5 bg-red-600/80 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
+                            className="p-2 bg-red-600/80 backdrop-blur-sm text-white rounded-lg hover:bg-red-600 transition-colors"
+                            title="Hapus"
                           >
-                            <X className="w-3.5 h-3.5 inline mr-0.5" />
-                            Hapus
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                         <p className="mt-1.5 text-[11px] text-white/20 truncate">
                           {uploaded.file.name} · {(uploaded.file.size / 1024).toFixed(0)} KB
+                          {!isPdf && uploaded.rotation > 0 && (
+                            <span className="ml-1.5 text-white/15">· diputar {uploaded.rotation}°</span>
+                          )}
                         </p>
                       </div>
                     ) : (
@@ -496,9 +650,13 @@ export default function BuatBerkas() {
                         }}
                         onDragOver={(e) => {
                           e.preventDefault()
+                          e.stopPropagation()
                           setDragOver(slot.id)
                         }}
-                        onDragLeave={() => setDragOver(null)}
+                        onDragLeave={(e) => {
+                          e.stopPropagation()
+                          setDragOver(null)
+                        }}
                         onDrop={(e) => handleDrop(slot.id, e)}
                       >
                         <Upload className="w-5 h-5 text-white/15 mb-2" />
@@ -528,17 +686,107 @@ export default function BuatBerkas() {
         </div>
       </main>
 
+      {/* global drag overlay */}
+      {globalDrag && (
+        <div className="fixed inset-0 z-[60] bg-[#0a0a0a]/90 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center mb-4">
+            <ImageIcon className="w-7 h-7 text-white/30" />
+          </div>
+          <p className="text-sm text-white/40 font-medium">Lepas file di sini</p>
+          <p className="text-xs text-white/15 mt-1">Otomatis masuk ke slot kosong</p>
+        </div>
+      )}
+
+      {/* zoom modal */}
+      {zoomSlot && zoomedUpload && zoomSlotData && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setZoomSlot(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* zoom header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-white/70 font-medium">{zoomSlotData.label}</span>
+                {!zoomedUpload.file.name.endsWith('.pdf') && zoomedUpload.rotation > 0 && (
+                  <span className="text-[11px] text-white/25 bg-white/[0.06] px-2 py-0.5 rounded-full">{zoomedUpload.rotation}°</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                {!zoomedUpload.file.name.endsWith('.pdf') && (
+                  <button
+                    onClick={() => handleRotate(zoomSlot)}
+                    className="flex items-center gap-1.5 h-8 px-3 text-xs text-white/50 hover:text-white/90 hover:bg-white/[0.06] rounded-lg transition-colors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    Putar
+                  </button>
+                )}
+                <button
+                  onClick={() => setZoomSlot(null)}
+                  className="p-2 hover:bg-white/[0.06] rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4 text-white/40" />
+                </button>
+              </div>
+            </div>
+
+            {/* zoom image */}
+            <div className="flex-1 bg-[#111] rounded-xl border border-white/[0.08] overflow-hidden flex items-center justify-center min-h-0">
+              {zoomedUpload.file.name.endsWith('.pdf') ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <FileText className="w-12 h-12 text-white/15 mb-3" />
+                  <span className="text-sm text-white/25">PDF Document</span>
+                  <span className="text-xs text-white/10 mt-1">{zoomedUpload.file.name}</span>
+                </div>
+              ) : (
+                <img
+                  src={zoomedUpload.preview}
+                  alt={zoomSlotData.label}
+                  className="max-w-full max-h-[70vh] object-contain"
+                  style={{ transform: `rotate(${zoomedUpload.rotation}deg)`, transition: 'transform 0.3s ease' }}
+                />
+              )}
+            </div>
+
+            <p className="mt-2 text-center text-[11px] text-white/15">
+              {zoomedUpload.file.name} · {(zoomedUpload.file.size / 1024).toFixed(0)} KB
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* bottom bar */}
       {uploadedCount > 0 && (
         <div className="fixed bottom-0 inset-x-0 bg-[#0a0a0a]/95 backdrop-blur-sm border-t border-white/[0.06] z-50">
           <div className="max-w-2xl mx-auto px-5 py-3 flex items-center gap-2.5">
             <button
               onClick={handleResetAll}
-              className="h-10 flex items-center gap-1.5 px-4 text-sm text-white/30 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors"
+              className="h-10 flex items-center gap-1.5 px-3 sm:px-4 text-sm text-white/30 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
+
+            {/* settings toggle */}
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`h-10 px-3 text-sm rounded-xl transition-colors flex items-center gap-1.5 ${
+                showSettings
+                  ? 'text-white/80 bg-white/[0.08]'
+                  : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span className="hidden sm:inline">{PAPER_LABELS[paperSize]} · {QUALITY_OPTIONS.find((q) => q.value === quality)?.label}</span>
+            </button>
+
             <button
               onClick={handlePreview}
               disabled={generating}
@@ -557,6 +805,56 @@ export default function BuatBerkas() {
               )}
             </button>
           </div>
+
+          {/* settings panel */}
+          {showSettings && (
+            <div className="max-w-2xl mx-auto px-5 pb-3">
+              <div className="bg-[#111] border border-white/[0.08] rounded-xl p-4">
+                {/* paper size */}
+                <div className="mb-4">
+                  <p className="text-[11px] text-white/30 font-medium uppercase tracking-wider mb-2.5">Ukuran Kertas</p>
+                  <div className="flex gap-2">
+                    {(['a4', 'letter', 'f4'] as PaperSize[]).map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setPaperSize(size)}
+                        className={`flex-1 h-9 text-xs font-medium rounded-lg transition-colors ${
+                          paperSize === size
+                            ? 'bg-red-600/20 text-red-400 border border-red-600/30'
+                            : 'bg-white/[0.04] text-white/30 border border-white/[0.06] hover:bg-white/[0.07] hover:text-white/50'
+                        }`}
+                      >
+                        {PAPER_LABELS[size]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* quality */}
+                <div>
+                  <p className="text-[11px] text-white/30 font-medium uppercase tracking-wider mb-2.5">Kualitas</p>
+                  <div className="flex gap-2">
+                    {QUALITY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setQuality(opt.value)}
+                        className={`flex-1 h-9 rounded-lg transition-colors flex flex-col items-center justify-center ${
+                          quality === opt.value
+                            ? 'bg-red-600/20 border border-red-600/30'
+                            : 'bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07]'
+                        }`}
+                      >
+                        <span className={`text-xs font-medium ${quality === opt.value ? 'text-red-400' : 'text-white/30'}`}>
+                          {opt.label}
+                        </span>
+                        <span className="text-[10px] text-white/15">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
