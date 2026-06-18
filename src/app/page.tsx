@@ -69,27 +69,27 @@ export default function Home() {
             <div className="flex justify-center lg:justify-end">
               <div className="relative">
                 {/* glow behind phone */}
-                <div className="absolute -inset-8 bg-red-600/[0.07] blur-3xl rounded-full pointer-events-none" />
+                <div className="absolute -inset-12 bg-red-600/[0.08] blur-3xl rounded-full pointer-events-none" />
 
                 {/* phone frame */}
-                <div className="relative w-[260px] sm:w-[280px] bg-[#1a1a1a] rounded-[36px] p-[6px] shadow-2xl shadow-black/60 border border-white/[0.08]">
+                <div className="relative w-[300px] sm:w-[340px] lg:w-[360px] bg-[#1a1a1a] rounded-[40px] p-[7px] shadow-2xl shadow-black/70 border border-white/[0.08]">
                   {/* notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#1a1a1a] rounded-b-2xl z-10" />
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-7 bg-[#1a1a1a] rounded-b-2xl z-10" />
 
                   {/* screen */}
-                  <div className="rounded-[30px] overflow-hidden">
+                  <div className="rounded-[33px] overflow-hidden bg-black">
                     <Image
-                      src="/phone-mockup.jpg"
+                      src="/phone-mockup.png"
                       alt="HakiPDF di mobile"
-                      width={560}
-                      height={1200}
+                      width={780}
+                      height={1690}
                       className="w-full h-auto"
                       priority
                     />
                   </div>
 
                   {/* home indicator */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-28 h-1 bg-white/20 rounded-full" />
+                  <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/15 rounded-full" />
                 </div>
               </div>
             </div>
