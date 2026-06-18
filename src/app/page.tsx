@@ -8,7 +8,7 @@ import {
   Send, ArrowRight, Trash2, Globe, RefreshCw, Menu, X,
   Search, Filter, Download, Settings, ExternalLink, Copy,
   LogIn, LogOut, UserPlus, Eye, Activity, TrendingUp,
-  Key, Webhook, Bell, FileText, History,
+  Key, Webhook, Bell, FileText, History, AlertTriangle,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -91,6 +91,7 @@ export default function Home() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
+  const [dbSetupNeeded, setDbSetupNeeded] = useState<boolean | null>(null);
 
   /* auth state */
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -139,6 +140,14 @@ export default function Home() {
   useEffect(() => {
     if (activeTab === "dashboard") fetchBots();
   }, [activeTab, fetchBots]);
+
+  /* ─── Check database setup ─── */
+  useEffect(() => {
+    fetch("/api/init-db")
+      .then(r => r.json())
+      .then(j => setDbSetupNeeded(j.success === false))
+      .catch(() => setDbSetupNeeded(null));
+  }, []);
 
   useScrollReveal(activeTab === "beranda");
 
@@ -376,6 +385,28 @@ export default function Home() {
      ═══════════════════════════════════════ */
   return (
     <div className="min-h-screen flex flex-col">
+      {/* ─── DB SETUP BANNER ─── */}
+      {dbSetupNeeded && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3">
+          <div className="max-w-6xl mx-auto flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-yellow-200 text-sm font-medium">Database belum di-setup</p>
+              <p className="text-yellow-300/70 text-xs mt-0.5">
+                Buka link ini, paste SQL, lalu klik <b>Run</b>:&nbsp;
+                <a href="https://supabase.com/dashboard/project/lbugditshniyphdzgjad/sql/new" target="_blank" rel="noopener"
+                  className="underline text-yellow-300 hover:text-yellow-200">
+                  SQL Editor &rarr;
+                </a>
+              </p>
+              <button onClick={() => setDbSetupNeeded(false)}
+                className="text-yellow-400/60 text-xs mt-1 hover:text-yellow-300">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* ─── AUTH MODAL ─── */}
       {authModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

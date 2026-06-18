@@ -1,29 +1,10 @@
 import { NextResponse } from "next/server";
-import pg from "pg";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const PROJECT_REF = "lbugditshniyphdzgjad";
-const DB_PASSWORD = process.env.SUPABASE_DB_PASSWORD || "";
 
-// Multiple connection string formats to try
-function getConnectionStrings(): string[] {
-  const pw = encodeURIComponent(DB_PASSWORD);
-  return [
-    // Direct connection (IPv6 - works on Vercel)
-    `postgresql://postgres:${pw}@db.${PROJECT_REF}.supabase.co:5432/postgres`,
-    // Transaction pooler - various regions
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-ap-east-1.pooler.supabase.com:6543/postgres`,
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres`,
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-us-east-1.pooler.supabase.com:6543/postgres`,
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-us-west-1.pooler.supabase.com:6543/postgres`,
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres`,
-    // Session pooler fallback
-    `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-  ];
-}
-
+// SQL to create all tables
 const CREATE_TABLES_SQL = `
--- Create bot_registrations table
 CREATE TABLE IF NOT EXISTS bot_registrations (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   user_id TEXT,
@@ -41,7 +22,6 @@ CREATE TABLE IF NOT EXISTS bot_registrations (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   bot_id TEXT NOT NULL REFERENCES bot_registrations(id) ON DELETE CASCADE,
@@ -51,133 +31,144 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS
 ALTER TABLE bot_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies: Allow all operations for authenticated users via service_role
--- Since we use service_role key on the server, these policies allow anon read
--- and service_role full access
+CREATE POLICY "Allow all on bot_registrations" ON bot_registrations
+  FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on audit_logs" ON audit_logs
+  FOR ALL USING (true) WITH CHECK (true);
 
--- Allow anyone to read bot registrations (for public listing)
-CREATE POLICY "Public read access on bot_registrations"
-  ON bot_registrations FOR SELECT
-  TO anon, authenticated
-  USING (true);
-
--- Allow service_role full access on bot_registrations
-CREATE POLICY "Service role full access on bot_registrations"
-  ON bot_registrations FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
-
--- Allow anyone to read audit logs
-CREATE POLICY "Public read access on audit_logs"
-  ON audit_logs FOR SELECT
-  TO anon, authenticated
-  USING (true);
-
--- Allow service_role full access on audit_logs
-CREATE POLICY "Service role full access on audit_logs"
-  ON audit_logs FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
-
--- Create index for performance
-CREATE INDEX IF NOT EXISTS idx_bot_registrations_user_id ON bot_registrations(user_id);
-CREATE INDEX IF NOT EXISTS idx_bot_registrations_status ON bot_registrations(status);
-CREATE INDEX IF NOT EXISTS idx_bot_registrations_created_at ON bot_registrations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bot_regs_user_id ON bot_registrations(user_id);
+CREATE INDEX IF NOT EXISTS idx_bot_regs_status ON bot_registrations(status);
+CREATE INDEX IF NOT EXISTS idx_bot_regs_created_at ON bot_registrations(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_bot_id ON audit_logs(bot_id);
 
--- Grant permissions
 GRANT ALL ON bot_registrations TO anon, authenticated, service_role;
 GRANT ALL ON audit_logs TO anon, authenticated, service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 `;
 
-async function tryConnect(connectionString: string): Promise<pg.Client | null> {
-  const client = new pg.Client({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 10000,
-    statement_timeout: 30000,
-  });
-  try {
-    await client.connect();
-    return client;
-  } catch {
-    try { client.end(); } catch { /* ignore */ }
-    return null;
-  }
-}
-
 export async function GET() {
-  if (!DB_PASSWORD) {
-    return NextResponse.json(
-      { error: "SUPABASE_DB_PASSWORD not set" },
-      { status: 500 }
-    );
-  }
+  // Method 1: Try using Supabase Management API with service_role key
+  const managementResults: { method: string; success: boolean; error?: string }[] = [];
 
-  const connectionStrings = getConnectionStrings();
-  let client: pg.Client | null = null;
-  let usedIndex = -1;
-
-  // Try each connection string
-  for (let i = 0; i < connectionStrings.length; i++) {
-    client = await tryConnect(connectionStrings[i]);
-    if (client) {
-      usedIndex = i;
-      break;
-    }
-  }
-
-  if (!client) {
-    return NextResponse.json(
+  // Try Supabase Management API (SQL execution endpoint)
+  try {
+    const mgmtRes = await fetch(
+      `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
       {
-        error: "Could not connect to Supabase PostgreSQL",
-        tried: connectionStrings.length,
-        hint: "Check project region and database password in Supabase Dashboard > Settings > Database",
-      },
-      { status: 500 }
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ query: CREATE_TABLES_SQL }),
+        signal: AbortSignal.timeout(15000),
+      }
     );
+    const mgmtData = await mgmtRes.json();
+    if (mgmtRes.ok) {
+      managementResults.push({ method: "management-api", success: true });
+    } else {
+      managementResults.push({
+        method: "management-api",
+        success: false,
+        error: mgmtData.message || mgmtData.error || JSON.stringify(mgmtData),
+      });
+    }
+  } catch (e) {
+    managementResults.push({
+      method: "management-api",
+      success: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
+
+  // Method 2: Try using pg module (direct TCP)
+  let pgResult: { method: string; success: boolean; error?: string } = {
+    method: "pg-direct",
+    success: false,
+  };
 
   try {
-    // Execute the SQL
-    await client.query(CREATE_TABLES_SQL);
+    const pg = (await import("pg")).default;
+    const pw = encodeURIComponent(process.env.SUPABASE_DB_PASSWORD || "");
 
-    // Verify tables were created
-    const tables = await client.query(`
-      SELECT table_name FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('bot_registrations', 'audit_logs')
-      ORDER BY table_name
-    `);
+    const connectionStrings = [
+      `postgresql://postgres:${pw}@db.${PROJECT_REF}.supabase.co:5432/postgres`,
+      `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
+      `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-ap-east-1.pooler.supabase.com:6543/postgres`,
+      `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-us-east-1.pooler.supabase.com:6543/postgres`,
+      `postgresql://postgres.${PROJECT_REF}:${pw}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres`,
+    ];
 
-    // Verify RLS policies
-    const policies = await client.query(`
-      SELECT schemaname, tablename, policyname
-      FROM pg_policies
-      WHERE schemaname = 'public' AND tablename IN ('bot_registrations', 'audit_logs')
-      ORDER BY tablename, policyname
-    `);
+    let client = null;
+    for (const cs of connectionStrings) {
+      try {
+        const c = new pg.Client({
+          connectionString: cs,
+          ssl: { rejectUnauthorized: false },
+          connectionTimeoutMillis: 8000,
+        });
+        await c.connect();
+        client = c;
+        pgResult = { method: "pg-direct", success: true };
+        break;
+      } catch (connErr) {
+        pgResult.error = connErr instanceof Error ? connErr.message : String(connErr);
+      }
+    }
 
+    if (client) {
+      try {
+        await client.query(CREATE_TABLES_SQL);
+        pgResult.success = true;
+        delete pgResult.error;
+      } catch (qErr) {
+        pgResult.success = false;
+        pgResult.error = qErr instanceof Error ? qErr.message : String(qErr);
+      } finally {
+        await client.end();
+      }
+    }
+  } catch (e) {
+    pgResult.error = e instanceof Error ? e.message : String(e);
+  }
+
+  managementResults.push(pgResult);
+
+  // Check if any method succeeded
+  const anySuccess = managementResults.some((r) => r.success);
+
+  // Verify tables exist via REST API
+  let tablesExist = false;
+  if (supabaseAdmin) {
+    const { error } = await supabaseAdmin
+      .from("bot_registrations")
+      .select("id")
+      .limit(1);
+    tablesExist = !error;
+  }
+
+  if (anySuccess || tablesExist) {
     return NextResponse.json({
       success: true,
-      message: "Database initialized successfully!",
-      connectionIndex: usedIndex,
-      tables: tables.rows.map((r) => r.table_name),
-      policies: policies.rows.map((r) => `${r.tablename}.${r.policyname}`),
+      message: tablesExist ? "Tables already exist!" : "Database initialized!",
+      tablesExist,
+      methods: managementResults,
     });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to create tables", detail: msg, connectionIndex: usedIndex },
-      { status: 500 }
-    );
-  } finally {
-    await client.end();
   }
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: "All connection methods failed",
+      methods: managementResults,
+      sql: CREATE_TABLES_SQL,
+      sqlEditorUrl: `https://supabase.com/dashboard/project/${PROJECT_REF}/sql`,
+      hint: "Open the SQL Editor URL above, paste the SQL below, and click Run",
+    },
+    { status: 500 }
+  );
 }
