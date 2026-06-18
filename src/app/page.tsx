@@ -117,7 +117,7 @@ export default function Home() {
               <div className="mt-8 flex flex-col sm:flex-row items-start gap-3">
                 <Link
                   href="/buat"
-                  className="animate-cta-glow inline-flex items-center justify-center h-11 px-7 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/20"
+                  className="hero-btn animate-cta-glow inline-flex items-center justify-center h-11 px-7 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-red-600/20"
                 >
                   Mulai Buat Berkas
                 </Link>
@@ -125,7 +125,7 @@ export default function Home() {
                   href="https://wa.me/6288291414071"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center h-11 px-7 bg-white/[0.06] hover:bg-white/[0.1] text-white/70 hover:text-white text-sm rounded-xl border border-white/[0.08] transition-all"
+                  className="hero-btn inline-flex items-center justify-center h-11 px-7 bg-white/[0.06] hover:bg-white/[0.1] text-white/70 hover:text-white text-sm rounded-xl border border-white/[0.08]"
                 >
                   Hubungi Kami
                 </a>

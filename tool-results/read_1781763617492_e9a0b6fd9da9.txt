@@ -1,0 +1,480 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useRef } from 'react'
+     4→import Image from 'next/image'
+     5→import Link from 'next/link'
+     6→
+     7→export default function Home() {
+     8→  const statsRef = useRef<HTMLDivElement>(null)
+     9→
+    10→  useEffect(() => {
+    11→    const observer = new IntersectionObserver(
+    12→      (entries) => {
+    13→        entries.forEach((entry) => {
+    14→          if (entry.isIntersecting) {
+    15→            const el = entry.target as HTMLElement
+    16→            const delay = el.dataset.scrollDelay
+    17→            if (delay) {
+    18→              el.style.transitionDelay = delay + 'ms'
+    19→            }
+    20→            el.classList.add('scroll-visible')
+    21→            observer.unobserve(el)
+    22→          }
+    23→        })
+    24→      },
+    25→      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    26→    )
+    27→
+    28→    document.querySelectorAll('.scroll-fade, .scroll-blur, .scroll-fade-scale, .scroll-fade-left, .scroll-fade-right').forEach((el) => {
+    29→      observer.observe(el)
+    30→    })
+    31→
+    32→    return () => observer.disconnect()
+    33→  }, [])
+    34→
+    35→  // counter animation for stats
+    36→  useEffect(() => {
+    37→    const container = statsRef.current
+    38→    if (!container) return
+    39→
+    40→    const counters = container.querySelectorAll('[data-count]')
+    41→    let started = false
+    42→
+    43→    const obs = new IntersectionObserver(
+    44→      (entries) => {
+    45→        if (entries[0].isIntersecting && !started) {
+    46→          started = true
+    47→          counters.forEach((el) => {
+    48→            const target = parseInt((el as HTMLElement).dataset.count || '0')
+    49→            const suffix = (el as HTMLElement).dataset.suffix || ''
+    50→            const duration = 1200
+    51→            const start = performance.now()
+    52→
+    53→            const tick = (now: number) => {
+    54→              const elapsed = now - start
+    55→              const progress = Math.min(elapsed / duration, 1)
+    56→              const eased = 1 - Math.pow(1 - progress, 3)
+    57→              const current = Math.round(eased * target)
+    58→              el.textContent = current + suffix
+    59→              if (progress < 1) requestAnimationFrame(tick)
+    60→            }
+    61→            requestAnimationFrame(tick)
+    62→          })
+    63→        }
+    64→      },
+    65→      { threshold: 0.5 }
+    66→    )
+    67→
+    68→    obs.observe(container)
+    69→    return () => obs.disconnect()
+    70→  }, [])
+    71→
+    72→  return (
+    73→    <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-white">
+    74→      {/* nav */}
+    75→      <nav className="border-b border-white/[0.06]">
+    76→        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
+    77→          <div className="flex items-center gap-2">
+    78→            <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
+    79→              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    80→                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    81→                <polyline points="14 2 14 8 20 8" />
+    82→              </svg>
+    83→            </div>
+    84→            <span className="text-sm font-semibold tracking-tight">HakiPDF</span>
+    85→          </div>
+    86→          <a
+    87→            href="https://wa.me/6288291414071"
+    88→            target="_blank"
+    89→            rel="noopener noreferrer"
+    90→            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+    91→          >
+    92→            Kontak
+    93→          </a>
+    94→        </div>
+    95→      </nav>
+    96→
+    97→      <main className="flex-1">
+    98→        {/* hero + phone */}
+    99→        <section className="max-w-5xl mx-auto px-5 pt-20 sm:pt-28 pb-24 sm:pb-32">
+   100→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+   101→            {/* text */}
+   102→            <div className="animate-fade-in-left">
+   103→              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-7">
+   104→                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-red-dot" />
+   105→                <span className="text-[11px] text-white/50">Gratis · Tanpa server · Output A4</span>
+   106→              </div>
+   107→
+   108→              <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight leading-[1.15]">
+   109→                Dokumen lamaran,{' '}
+   110→                <span className="text-red-500">langsung jadi PDF.</span>
+   111→              </h1>
+   112→
+   113→              <p className="mt-5 text-white/40 text-sm sm:text-[15px] max-w-md leading-relaxed">
+   114→                Upload foto tiap dokumen, urutkan sesuai kebutuhan, download PDF-nya. Semua di browser — file kamu tetap aman.
+   115→              </p>
+   116→
+   117→              <div className="mt-8 flex flex-col sm:flex-row items-start gap-3">
+   118→                <Link
+   119→                  href="/buat"
+   120→                  className="animate-cta-glow inline-flex items-center justify-center h-11 px-7 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-red-600/20"
+   121→                >
+   122→                  Mulai Buat Berkas
+   123→                </Link>
+   124→                <a
+   125→                  href="https://wa.me/6288291414071"
+   126→                  target="_blank"
+   127→                  rel="noopener noreferrer"
+   128→                  className="inline-flex items-center justify-center h-11 px-7 bg-white/[0.06] hover:bg-white/[0.1] text-white/70 hover:text-white text-sm rounded-xl border border-white/[0.08] transition-all"
+   129→                >
+   130→                  Hubungi Kami
+   131→                </a>
+   132→              </div>
+   133→            </div>
+   134→
+   135→            {/* phone mockup */}
+   136→            <div className="flex justify-center lg:justify-end animate-fade-in-right">
+   137→              <div className="relative">
+   138→                <div className="absolute -inset-16 bg-red-600/[0.08] blur-[80px] rounded-full pointer-events-none animate-glow-pulse" />
+   139→                <div className="relative w-[280px] sm:w-[300px] lg:w-[310px] rounded-[44px] p-[2px] bg-gradient-to-b from-white/[0.14] via-white/[0.08] to-white/[0.03] shadow-2xl shadow-black/80 animate-phone-float">
+   140→                  <div className="relative bg-[#0f0f0f] rounded-[42px] p-[5px]">
+   141→                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[26px] bg-[#0f0f0f] rounded-b-2xl z-10" />
+   142→                    <div className="absolute top-[7px] left-1/2 -translate-x-1/2 w-16 h-[18px] bg-black rounded-full z-10" />
+   143→                    <div className="rounded-[37px] overflow-hidden bg-black h-[520px] sm:h-[560px] lg:h-[580px] relative">
+   144→                      <Image
+   145→                        src="/phone-mockup.png"
+   146→                        alt="HakiPDF di mobile"
+   147→                        width={780}
+   148→                        height={1690}
+   149→                        className="w-full h-full object-cover object-top"
+   150→                        priority
+   151→                      />
+   152→                      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+   153→                    </div>
+   154→                    <div className="absolute bottom-[9px] left-1/2 -translate-x-1/2 w-28 h-[4px] bg-white/10 rounded-full" />
+   155→                  </div>
+   156→                  <div className="absolute top-3 left-3 w-20 h-40 bg-gradient-to-b from-white/[0.08] to-transparent rounded-full blur-xl pointer-events-none rotate-[-15deg]" />
+   157→                </div>
+   158→              </div>
+   159→            </div>
+   160→          </div>
+   161→        </section>
+   162→
+   163→        {/* shimmer divider */}
+   164→        <div className="shimmer-divider" />
+   165→
+   166→        {/* stats strip */}
+   167→        <section ref={statsRef}>
+   168→          <div className="max-w-5xl mx-auto px-5 py-12 grid grid-cols-3 gap-4 text-center">
+   169→            {[
+   170→              { value: 13, suffix: '', label: 'Slot dokumen' },
+   171→              { value: 100, suffix: '%', label: 'Client-side' },
+   172→              { value: 0, suffix: '', label: 'Data dikirim' },
+   173→            ].map((stat, i) => (
+   174→              <div key={stat.label} className="scroll-blur stat-hover" data-scroll-delay={i * 120}>
+   175→                <p className="text-2xl sm:text-3xl font-bold text-white/90 tabular-nums" data-count={stat.value} data-suffix={stat.suffix}>0{stat.suffix}</p>
+   176→                <p className="text-[11px] text-white/30 mt-2">{stat.label}</p>
+   177→              </div>
+   178→            ))}
+   179→          </div>
+   180→        </section>
+   181→
+   182→        <div className="shimmer-divider" />
+   183→
+   184→        {/* feature highlights */}
+   185→        <section className="py-24">
+   186→          <div className="max-w-5xl mx-auto px-5">
+   187→            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Kenapa HakiPDF</p>
+   188→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   189→              {[
+   190→                {
+   191→                  icon: (
+   192→                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+   193→                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+   194→                    </svg>
+   195→                  ),
+   196→                  title: 'Output A4 standar',
+   197→                  desc: 'PDF yang dihasilkan udah sesuai ukuran A4 — siap cetak langsung tanpa perlu resize lagi.',
+   198→                },
+   199→                {
+   200→                  icon: (
+   201→                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+   202→                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+   203→                    </svg>
+   204→                  ),
+   205→                  title: 'Drag & drop',
+   206→                  desc: 'Cukup drag file dari file manager langsung ke slot yang diinginkan. Gak perlu klik browse.',
+   207→                },
+   208→                {
+   209→                  icon: (
+   210→                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+   211→                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+   212→                    </svg>
+   213→                  ),
+   214→                  title: 'Gratis selamanya',
+   215→                  desc: 'Tanpa biaya, tanpa langganan, tanpa iklan. Fitur lengkap tanpa paywall.',
+   216→                },
+   217→                {
+   218→                  icon: (
+   219→                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+   220→                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+   221→                    </svg>
+   222→                  ),
+   223→                  title: 'Tanpa registrasi',
+   224→                  desc: 'Gak perlu buat akun, gak perlu login. Langsung buka dan pakai.',
+   225→                },
+   226→                {
+   227→                  icon: (
+   228→                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+   229→                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+   230→                    </svg>
+   231→                  ),
+   232→                  title: 'Bisa di HP',
+   233→                  desc: 'Responsif dan ringan. Kerja dari mana aja — laptop, tablet, atau HP.',
+   234→                },
+   235→                {
+   236→                  icon: (
+   237→                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+   238→                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+   239→                    </svg>
+   240→                  ),
+   241→                  title: 'Privasi terjamin',
+   242→                  desc: 'Semua proses lokal di browser. File gak pernah meninggalkan device kamu.',
+   243→                },
+   244→              ].map((item, i) => (
+   245→                <div key={item.title} className={`scroll-blur card-hover group bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 ${i < 3 ? 'scroll-fade-left' : 'scroll-fade-right'}`} data-scroll-delay={i * 100}>
+   246→                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4 text-white/35 feature-icon">
+   247→                    {item.icon}
+   248→                  </div>
+   249→                  <p className="text-sm font-semibold text-white/85">{item.title}</p>
+   250→                  <p className="text-xs text-white/30 mt-2 leading-relaxed">{item.desc}</p>
+   251→                </div>
+   252→              ))}
+   253→            </div>
+   254→          </div>
+   255→        </section>
+   256→
+   257→        <div className="shimmer-divider" />
+   258→
+   259→        {/* cara kerja */}
+   260→        <section className="py-24">
+   261→          <div className="max-w-5xl mx-auto px-5">
+   262→            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Cara kerja</p>
+   263→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+   264→              {[
+   265→                { step: '01', title: 'Upload', desc: 'Foto dokumen ke slot yang sesuai. Didukung JPG, PNG, WebP, dan PDF.' },
+   266→                { step: '02', title: 'Urutkan', desc: 'Atur urutan dokumen pakai tombol panah. Wajib dan opsional udah ditandai.' },
+   267→                { step: '03', title: 'Download', desc: 'Preview hasilnya dulu. Kalau udah pas, download atau langsung cetak.' },
+   268→              ].map((item, i) => (
+   269→                <div key={item.step} className="scroll-fade card-hover relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-7" data-scroll-delay={i * 150}>
+   270→                  <span className="text-4xl font-bold text-white/[0.05] leading-none block">{item.step}</span>
+   271→                  <p className="text-sm font-semibold text-white/90 mt-4">{item.title}</p>
+   272→                  <p className="text-xs text-white/35 mt-2.5 leading-relaxed">{item.desc}</p>
+   273→                </div>
+   274→              ))}
+   275→            </div>
+   276→          </div>
+   277→        </section>
+   278→
+   279→        <div className="shimmer-divider" />
+   280→
+   281→        {/* dokumen didukung */}
+   282→        <section className="py-24">
+   283→          <div className="max-w-5xl mx-auto px-5">
+   284→            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-4 scroll-fade">Dokumen yang didukung</p>
+   285→            <p className="text-sm text-white/40 text-center max-w-md mx-auto mb-14 leading-relaxed scroll-fade" data-scroll-delay="60">
+   286→              13 slot dokumen yang umum dibutuhkan saat melamar kerja. Wajib dan opsional udah ditandai otomatis.
+   287→            </p>
+   288→            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+   289→              {[
+   290→                { name: 'Pas Foto', tag: 'opsional' },
+   291→                { name: 'Surat Lamaran', tag: 'wajib' },
+   292→                { name: 'Daftar Riwayat Hidup', tag: 'wajib' },
+   293→                { name: 'KTP', tag: 'wajib' },
+   294→                { name: 'NPWP', tag: 'opsional' },
+   295→                { name: 'Ijazah', tag: 'wajib' },
+   296→                { name: 'SKCK', tag: 'opsional' },
+   297→                { name: 'Kartu Vaksin', tag: 'opsional' },
+   298→                { name: 'Sertifikat', tag: 'opsional' },
+   299→                { name: 'Kartu Keluarga', tag: 'wajib' },
+   300→                { name: 'Akta Kelahiran', tag: 'opsional' },
+   301→                { name: 'SK Sehat', tag: 'opsional' },
+   302→                { name: 'Daftar Nilai', tag: 'opsional' },
+   303→              ].map((doc, i) => (
+   304→                <div key={doc.name} className="scroll-fade doc-hover bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3.5 flex items-center justify-between" data-scroll-delay={i * 40}>
+   305→                  <span className="text-xs text-white/60 truncate mr-2">{doc.name}</span>
+   306→                  {doc.tag === 'wajib' && (
+   307→                    <span className="text-[10px] text-red-500/60 bg-red-500/[0.08] px-1.5 py-0.5 rounded-md shrink-0">wajib</span>
+   308→                  )}
+   309→                </div>
+   310→              ))}
+   311→            </div>
+   312→          </div>
+   313→        </section>
+   314→
+   315→        <div className="shimmer-divider" />
+   316→
+   317→        {/* faq */}
+   318→        <section className="py-24">
+   319→          <div className="max-w-xl mx-auto px-5">
+   320→            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">FAQ</p>
+   321→            <div className="space-y-3">
+   322→              {[
+   323→                { q: 'Format file apa aja yang didukung?', a: 'JPG, PNG, WebP, HEIC, dan PDF. Kalau filenya gambar, otomatis dikonversi ke JPEG sebelum masuk PDF.' },
+   324→                { q: 'File saya aman?', a: 'Semua proses berjalan di browser. File gak pernah dikirim ke server — langsung diproses di device kamu.' },
+   325→                { q: 'Ada batas ukuran file?', a: 'Gak ada batas dari sisi aplikasi. Tapi browser biasanya bisa handle file sampai ratusan MB tanpa masalah.' },
+   326→                { q: 'Bisa edit urutan dokumen?', a: 'Bisa. Setiap slot ada tombol panah atas/bawah buat pindah posisi. Dokumen yang sudah diurutkan akan mengikuti urutan itu di PDF.' },
+   327→                { q: 'Ini gratis?', a: 'Ya, sepenuhnya gratis. Gak perlu daftar, gak perlu login, gak ada iklan.' },
+   328→              ].map((item, i) => (
+   329→                <details key={item.q} className="scroll-fade faq-hover group bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden" data-scroll-delay={i * 80}>
+   330→                  <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+   331→                    <span className="text-sm text-white/80 pr-4">{item.q}</span>
+   332→                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 shrink-0 transition-transform duration-300 group-open:rotate-180">
+   333→                      <polyline points="6 9 12 15 18 9" />
+   334→                    </svg>
+   335→                  </summary>
+   336→                  <div className="px-5 pb-4">
+   337→                    <p className="text-xs text-white/40 leading-relaxed">{item.a}</p>
+   338→                  </div>
+   339→                </details>
+   340→              ))}
+   341→            </div>
+   342→          </div>
+   343→        </section>
+   344→
+   345→        <div className="shimmer-divider" />
+   346→
+   347→        {/* testimonials */}
+   348→        <section className="py-24">
+   349→          <div className="max-w-5xl mx-auto px-5">
+   350→            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-14 scroll-fade">Kata mereka</p>
+   351→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   352→              {[
+   353→                {
+   354→                  name: 'Rina S.',
+   355→                  role: 'Fresh Graduate',
+   356→                  text: 'Gak nyangka se-simple ini. Tinggal upload foto dokumen, langsung jadi PDF. Gak perlu install app apapun.',
+   357→                },
+   358→                {
+   359→                  name: 'Bagus P.',
+   360→                  role: 'Job Seeker',
+   361→                  text: 'Dulu ribet banget scan satu-satu terus gabungin. Ini semua beres di browser dalam hitungan menit.',
+   362→                },
+   363→                {
+   364→                  name: 'Dewi A.',
+   365→                  role: 'Administrasi',
+   366→                  text: 'Yang paling penting file gak dikirim ke server. Buat dokumen pribadi ini sangat nyaman dipakai.',
+   367→                },
+   368→              ].map((item, i) => (
+   369→                <div key={item.name} className="scroll-blur card-hover bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6" data-scroll-delay={i * 150}>
+   370→                  <div className="flex gap-1 mb-4">
+   371→                    {[...Array(5)].map((_, j) => (
+   372→                      <svg key={j} width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500/60 star-twinkle">
+   373→                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+   374→                      </svg>
+   375→                    ))}
+   376→                  </div>
+   377→                  <p className="text-xs text-white/45 leading-relaxed">&ldquo;{item.text}&rdquo;</p>
+   378→                  <div className="mt-4 pt-4 border-t border-white/[0.06]">
+   379→                    <p className="text-xs font-medium text-white/60">{item.name}</p>
+   380→                    <p className="text-[11px] text-white/25 mt-0.5">{item.role}</p>
+   381→                  </div>
+   382→                </div>
+   383→              ))}
+   384→            </div>
+   385→          </div>
+   386→        </section>
+   387→
+   388→        <div className="shimmer-divider" />
+   389→
+   390→        {/* contact */}
+   391→        <section className="py-24">
+   392→          <div className="max-w-5xl mx-auto px-5">
+   393→            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-12 scroll-fade">Hubungi Kami</p>
+   394→            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+   395→              <a
+   396→                href="https://wa.me/6288291414071"
+   397→                target="_blank"
+   398→                rel="noopener noreferrer"
+   399→                className="scroll-fade-left contact-hover flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-green-500/[0.06] hover:border-green-500/[0.15] group"
+   400→                data-scroll-delay="0"
+   401→              >
+   402→                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 transition-all duration-300 group-hover:bg-green-500/20 group-hover:scale-110">
+   403→                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-green-500/80 group-hover:text-green-400 transition-colors">
+   404→                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="currentColor" />
+   405→                  </svg>
+   406→                </div>
+   407→                <div>
+   408→                  <p className="text-sm text-white/80 font-medium">WhatsApp</p>
+   409→                  <p className="text-xs text-white/30 mt-0.5">0882-9141-4071</p>
+   410→                </div>
+   411→              </a>
+   412→              <a
+   413→                href="mailto:ardywikasa1@gmail.com"
+   414→                className="scroll-fade-right contact-hover flex items-center gap-3.5 w-full sm:w-auto px-6 py-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/[0.06] hover:border-white/[0.12] group"
+   415→                data-scroll-delay="100"
+   416→              >
+   417→                <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center shrink-0 transition-all duration-300 group-hover:bg-white/[0.08] group-hover:scale-110">
+   418→                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 group-hover:text-white/60 transition-colors">
+   419→                    <rect x="2" y="4" width="20" height="16" rx="2" />
+   420→                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+   421→                  </svg>
+   422→                </div>
+   423→                <div>
+   424→                  <p className="text-sm text-white/80 font-medium">Email</p>
+   425→                  <p className="text-xs text-white/30 mt-0.5">ardywikasa1@gmail.com</p>
+   426→                </div>
+   427→              </a>
+   428→            </div>
+   429→          </div>
+   430→        </section>
+   431→
+   432→        {/* cta */}
+   433→        <section className="py-24">
+   434→          <div className="max-w-5xl mx-auto px-5">
+   435→            <div className="scroll-fade-scale cta-border relative bg-gradient-to-b from-red-950/30 to-transparent rounded-3xl px-8 py-16 sm:py-20 text-center overflow-hidden">
+   436→              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-red-600/[0.08] blur-[100px] rounded-full pointer-events-none animate-glow-pulse" />
+   437→              <div className="absolute bottom-0 left-1/4 w-40 h-40 bg-red-600/[0.04] blur-[60px] rounded-full pointer-events-none" style={{ animation: 'glow-pulse 5s ease-in-out 1.5s infinite' }} />
+   438→              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white/90 relative">
+   439→                Siap bikin berkas lamaran?
+   440→              </h2>
+   441→              <p className="mt-3 text-sm text-white/35 max-w-sm mx-auto leading-relaxed relative">
+   442→                Gratis, tanpa daftar, langsung pakai. Mulai dari upload sampai download PDF dalam hitungan menit.
+   443→              </p>
+   444→              <Link
+   445→                href="/buat"
+   446→                className="animate-cta-glow relative inline-flex items-center justify-center h-12 px-9 mt-8 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105"
+   447→              >
+   448→                Mulai Sekarang
+   449→              </Link>
+   450→            </div>
+   451→          </div>
+   452→        </section>
+   453→
+   454→        {/* privacy */}
+   455→        <section className="py-20">
+   456→          <div className="max-w-5xl mx-auto px-5">
+   457→            <div className="scroll-fade max-w-md mx-auto text-center">
+   458→              <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-5 animate-subtle-float">
+   459→                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/25">
+   460→                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+   461→                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+   462→                </svg>
+   463→              </div>
+   464→              <p className="text-sm text-white/40 leading-relaxed">
+   465→                Semua proses berjalan di browser kamu. File gak pernah dikirim ke server manapun — datamu tetap milikmu.
+   466→              </p>
+   467→            </div>
+   468→          </div>
+   469→        </section>
+   470→      </main>
+   471→
+   472→      {/* footer */}
+   473→      <footer className="shimmer-divider">
+   474→        <div className="max-w-5xl mx-auto px-5 h-12 flex items-center">
+   475→          <span className="text-[11px] text-white/15">HakiPDF</span>
+   476→        </div>
+   477→      </footer>
+   478→    </div>
+   479→  )
+   480→}
