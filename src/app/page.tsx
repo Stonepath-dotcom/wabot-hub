@@ -9,7 +9,7 @@ import {
   Send, ArrowRight, Trash2, Globe, RefreshCw, Menu, X,
   Search, Filter, Download, Settings, ExternalLink, Copy,
   LogIn, LogOut, UserPlus, Eye, Activity, TrendingUp,
-  Key, Webhook, Bell, FileText, History, AlertTriangle,
+  Key, Webhook, Bell, FileText, History,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -92,8 +92,6 @@ export default function Home() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
-  const [dbSetupNeeded, setDbSetupNeeded] = useState<boolean | null>(null);
-
   /* auth state */
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -146,23 +144,24 @@ export default function Home() {
     try {
       const params = user ? `?userId=${user.id}` : "";
       const res = await fetch(`/api/bots${params}`);
+      if (!res.ok) {
+        let msg = `Error ${res.status}`;
+        try { const j = await res.json(); msg = j.error || msg; } catch {}
+        toast.error(msg);
+        return;
+      }
       const json = await res.json();
       if (json.data) setBots(json.data);
       if (json.stats) setStats(json.stats);
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error("fetchBots error:", err);
+      toast.error("Gagal memuat data bot");
+    }
   }, [user]);
 
   useEffect(() => {
     if (activeTab === "dashboard") fetchBots();
   }, [activeTab, fetchBots]);
-
-  /* ─── Check database setup ─── */
-  useEffect(() => {
-    fetch("/api/init-db")
-      .then(r => r.json())
-      .then(j => setDbSetupNeeded(j.success === false))
-      .catch(() => setDbSetupNeeded(null));
-  }, []);
 
   useScrollReveal(activeTab === "beranda");
 
@@ -271,12 +270,20 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      if (!res.ok) {
+        let msg = "Terjadi kesalahan";
+        try { const j = await res.json(); msg = j.error || j.detail || msg; } catch {}
+        toast.error(msg);
+        return;
+      }
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error || "Terjadi kesalahan"); return; }
       toast.success("Pendaftaran berhasil dikirim!");
       e.currentTarget.reset();
       setActiveTab("dashboard");
-    } catch { toast.error("Gagal terhubung ke server"); }
+    } catch (err) {
+      console.error("Register error:", err);
+      toast.error(err instanceof Error ? err.message : "Gagal terhubung ke server");
+    }
     finally { setLoading(false); }
   }
 
@@ -288,23 +295,29 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, userId: user?.id }),
       });
-      if (!res.ok) { const j = await res.json(); toast.error(j.error || "Gagal"); return; }
+      if (!res.ok) { let msg = "Gagal"; try { const j = await res.json(); msg = j.error || msg; } catch {} toast.error(msg); return; }
       toast.success(`Status: ${STATUS_MAP[status]?.label || status}`);
       fetchBots();
       if (selectedBot?.id === id) {
         setSelectedBot((prev) => prev ? { ...prev, status } : null);
       }
-    } catch { toast.error("Gagal terhubung"); }
+    } catch (err) {
+      console.error("updateStatus error:", err);
+      toast.error("Gagal terhubung ke server");
+    }
   }
 
   async function deleteBot(id: string) {
     try {
       const res = await fetch(`/api/bots/${id}/status`, { method: "DELETE" });
-      if (!res.ok) { toast.error("Gagal menghapus"); return; }
+      if (!res.ok) { let msg = "Gagal menghapus"; try { const j = await res.json(); msg = j.error || msg; } catch {} toast.error(msg); return; }
       toast.success("Berhasil dihapus");
       fetchBots();
       if (selectedBot?.id === id) setSelectedBot(null);
-    } catch { toast.error("Gagal terhubung"); }
+    } catch (err) {
+      console.error("deleteBot error:", err);
+      toast.error("Gagal terhubung ke server");
+    }
   }
 
   /* ─── Save config ─── */
@@ -325,7 +338,10 @@ export default function Home() {
       toast.success("Konfigurasi disimpan!");
       fetchBots();
       setShowConfig(null);
-    } catch { toast.error("Gagal terhubung"); }
+    } catch (err) {
+      console.error("saveConfig error:", err);
+      toast.error("Gagal terhubung ke server");
+    }
   }
 
   /* ─── Generate webhook ─── */
@@ -342,7 +358,10 @@ export default function Home() {
       toast.success("Webhook URL dibuat!");
       fetchBots();
       if (selectedBot?.id === id) setSelectedBot((p) => p ? { ...p, webhookUrl: url } : null);
-    } catch { toast.error("Gagal terhubung"); }
+    } catch (err) {
+      console.error("generateWebhook error:", err);
+      toast.error("Gagal terhubung ke server");
+    }
   }
 
   /* ─── Export CSV ─── */
@@ -400,28 +419,6 @@ export default function Home() {
      ═══════════════════════════════════════ */
   return (
     <div className="min-h-screen flex flex-col">
-      {/* ─── DB SETUP BANNER ─── */}
-      {dbSetupNeeded && (
-        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3">
-          <div className="max-w-6xl mx-auto flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-yellow-200 text-sm font-medium">Database belum di-setup</p>
-              <p className="text-yellow-300/70 text-xs mt-0.5">
-                Buka link ini, paste SQL, lalu klik <b>Run</b>:&nbsp;
-                <a href="https://supabase.com/dashboard/project/lbugditshniyphdzgjad/sql/new" target="_blank" rel="noopener"
-                  className="underline text-yellow-300 hover:text-yellow-200">
-                  SQL Editor &rarr;
-                </a>
-              </p>
-              <button onClick={() => setDbSetupNeeded(false)}
-                className="text-yellow-400/60 text-xs mt-1 hover:text-yellow-300">
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* ─── AUTH MODAL ─── */}
       {authModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

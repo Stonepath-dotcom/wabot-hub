@@ -1,0 +1,1279 @@
+     1→"use client";
+     2→// v2-supabase-migrated
+     3→
+     4→import { useState, useEffect, useCallback, useRef, type FormEvent } from "react";
+     5→import { toast } from "sonner";
+     6→import {
+     7→  Bot, MessageSquare, Zap, Shield, BarChart3, Users, Clock,
+     8→  CheckCircle2, ChevronDown, ChevronRight, Phone, Mail, MapPin,
+     9→  Send, ArrowRight, Trash2, Globe, RefreshCw, Menu, X,
+    10→  Search, Filter, Download, Settings, ExternalLink, Copy,
+    11→  LogIn, LogOut, UserPlus, Eye, Activity, TrendingUp,
+    12→  Key, Webhook, Bell, FileText, History, AlertTriangle,
+    13→} from "lucide-react";
+    14→
+    15→/* ─── Types ─── */
+    16→interface BotReg {
+    17→  id: string;
+    18→  userId: string | null;
+    19→  name: string;
+    20→  whatsappNumber: string;
+    21→  email: string | null;
+    22→  botType: string;
+    23→  description: string | null;
+    24→  status: string;
+    25→  webhookUrl: string | null;
+    26→  welcomeMessage: string | null;
+    27→  autoReply: string | null;
+    28→  operatingHours: string | null;
+    29→  createdAt: string;
+    30→  updatedAt: string;
+    31→  _count?: { auditLogs: number; configs: number };
+    32→}
+    33→
+    34→interface Stats {
+    35→  total: number;
+    36→  pending: number;
+    37→  approved: number;
+    38→  rejected: number;
+    39→  byType: Record<string, number>;
+    40→  recentDays: Record<string, number>;
+    41→}
+    42→
+    43→interface AuthUser {
+    44→  id: string;
+    45→  email: string;
+    46→  name?: string;
+    47→}
+    48→
+    49→const BOT_TYPES = [
+    50→  { value: "customer-service", label: "Customer Service" },
+    51→  { value: "marketing", label: "Marketing & Promo" },
+    52→  { value: "transaction", label: "Transaksi & Pembayaran" },
+    53→  { value: "notification", label: "Notifikasi & Reminder" },
+    54→  { value: "ai-chatbot", label: "AI Chatbot" },
+    55→  { value: "other", label: "Lainnya" },
+    56→];
+    57→
+    58→const STATUS_MAP: Record<string, { label: string; class: string }> = {
+    59→  pending: { label: "Menunggu", class: "status-pending" },
+    60→  approved: { label: "Disetujui", class: "status-approved" },
+    61→  rejected: { label: "Ditolak", class: "status-rejected" },
+    62→};
+    63→
+    64→/* ─── Scroll Observer Hook ─── */
+    65→function useScrollReveal(active: boolean) {
+    66→  useEffect(() => {
+    67→    if (!active) return;
+    68→    const observer = new IntersectionObserver(
+    69→      (entries) => {
+    70→        entries.forEach((e) => {
+    71→          if (e.isIntersecting) e.target.classList.add("scroll-visible");
+    72→        });
+    73→      },
+    74→      { threshold: 0.08, rootMargin: "0px 0px -30px 0px" }
+    75→    );
+    76→    const els = document.querySelectorAll(
+    77→      ".scroll-fade, .scroll-blur, .scroll-fade-left, .scroll-fade-right, .scroll-fade-scale"
+    78→    );
+    79→    els.forEach((el) => observer.observe(el));
+    80→    return () => observer.disconnect();
+    81→  }, [active]);
+    82→}
+    83→
+    84→/* ═══════════════════════════════════════
+    85→   MAIN PAGE
+    86→   ═══════════════════════════════════════ */
+    87→export default function Home() {
+    88→  const [activeTab, setActiveTab] = useState<"beranda" | "daftar" | "dashboard">("beranda");
+    89→  const [bots, setBots] = useState<BotReg[]>([]);
+    90→  const [stats, setStats] = useState<Stats | null>(null);
+    91→  const [loading, setLoading] = useState(false);
+    92→  const [mobileMenu, setMobileMenu] = useState(false);
+    93→  const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
+    94→  const [authLoading, setAuthLoading] = useState(false);
+    95→  const [dbSetupNeeded, setDbSetupNeeded] = useState<boolean | null>(null);
+    96→
+    97→  /* auth state */
+    98→  const [user, setUser] = useState<AuthUser | null>(null);
+    99→  const [authInitialized, setAuthInitialized] = useState(false);
+   100→
+   101→  /* dashboard filters */
+   102→  const [searchQuery, setSearchQuery] = useState("");
+   103→  const [filterStatus, setFilterStatus] = useState<string>("all");
+   104→  const [selectedBot, setSelectedBot] = useState<BotReg | null>(null);
+   105→  const [showAnalytics, setShowAnalytics] = useState(false);
+   106→  const [showConfig, setShowConfig] = useState<BotReg | null>(null);
+   107→
+   108→  /* config form */
+   109→  const [cfgWelcome, setCfgWelcome] = useState("");
+   110→  const [cfgAutoReply, setCfgAutoReply] = useState("");
+   111→  const [cfgHours, setCfgHours] = useState("00:00 - 23:59");
+   112→
+   113→  const formRef = useRef<HTMLDivElement>(null);
+   114→
+   115→  /* ─── Runtime Supabase client (bypasses build-time env issue) ─── */
+   116→  const [sbClient, setSbClient] = useState<any>(null);
+   117→
+   118→  useEffect(() => {
+   119→    (async () => {
+   120→      try {
+   121→        const res = await fetch('/api/config');
+   122→        const { supabaseUrl, supabaseAnonKey } = await res.json();
+   123→        const { createClient } = await import('@supabase/supabase-js');
+   124→        setSbClient(createClient(supabaseUrl, supabaseAnonKey));
+   125→      } catch {}
+   126→    })();
+   127→  }, []);
+   128→
+   129→  /* ─── Init auth ─── */
+   130→  useEffect(() => {
+   131→    try {
+   132→      const stored = localStorage.getItem("wabot_user");
+   133→      if (stored) setUser(JSON.parse(stored));
+   134→    } catch { /* empty */ }
+   135→    setAuthInitialized(true);
+   136→  }, []);
+   137→
+   138→  function saveUser(u: AuthUser | null) {
+   139→    setUser(u);
+   140→    if (u) localStorage.setItem("wabot_user", JSON.stringify(u));
+   141→    else localStorage.removeItem("wabot_user");
+   142→  }
+   143→
+   144→  /* ─── Fetch bots ─── */
+   145→  const fetchBots = useCallback(async () => {
+   146→    try {
+   147→      const params = user ? `?userId=${user.id}` : "";
+   148→      const res = await fetch(`/api/bots${params}`);
+   149→      const json = await res.json();
+   150→      if (json.data) setBots(json.data);
+   151→      if (json.stats) setStats(json.stats);
+   152→    } catch { /* silent */ }
+   153→  }, [user]);
+   154→
+   155→  useEffect(() => {
+   156→    if (activeTab === "dashboard") fetchBots();
+   157→  }, [activeTab, fetchBots]);
+   158→
+   159→  /* ─── Check database setup ─── */
+   160→  useEffect(() => {
+   161→    fetch("/api/init-db")
+   162→      .then(r => r.json())
+   163→      .then(j => setDbSetupNeeded(j.success === false))
+   164→      .catch(() => setDbSetupNeeded(null));
+   165→  }, []);
+   166→
+   167→  useScrollReveal(activeTab === "beranda");
+   168→
+   169→  /* ─── Auth handlers ─── */
+   170→  async function handleAuth(e: FormEvent, mode: "login" | "register") {
+   171→    e.preventDefault();
+   172→    setAuthLoading(true);
+   173→    const fd = new FormData(e.currentTarget);
+   174→    const email = (fd.get("email") as string)?.trim();
+   175→    const password = (fd.get("password") as string)?.trim();
+   176→    const name = (fd.get("name") as string)?.trim();
+   177→
+   178→    if (!email || !password) {
+   179→      toast.error("Email dan password wajib diisi");
+   180→      setAuthLoading(false);
+   181→      return;
+   182→    }
+   183→
+   184→    if (mode === "register" && !name) {
+   185→      toast.error("Nama wajib diisi");
+   186→      setAuthLoading(false);
+   187→      return;
+   188→    }
+   189→
+   190→    /* Try Supabase first */
+   191→    try {
+   192→      const supabase = sbClient || (await import("@/lib/supabase")).supabase;
+   193→      if (supabase) {
+   194→        const result =
+   195→          mode === "register"
+   196→            ? await supabase.auth.signUp({ email, password, options: { data: { name } } })
+   197→            : await supabase.auth.signInWithPassword({ email, password });
+   198→
+   199→        if (result.error) {
+   200→          toast.error(result.error.message);
+   201→          setAuthLoading(false);
+   202→          return;
+   203→        }
+   204→
+   205→        const meta = result.data.user?.user_metadata;
+   206→        const authUser: AuthUser = {
+   207→          id: result.data.user!.id,
+   208→          email: result.data.user!.email!,
+   209→          name: meta?.name || email.split("@")[0],
+   210→        };
+   211→        saveUser(authUser);
+   212→        toast.success(mode === "register" ? "Registrasi berhasil! Silakan cek email untuk verifikasi." : `Selamat datang, ${authUser.name}!`);
+   213→        setAuthModal(null);
+   214→        setAuthLoading(false);
+   215→        return;
+   216→      }
+   217→    } catch { /* fall through to demo */ }
+   218→
+   219→    /* Demo/local fallback */
+   220→    if (mode === "register") {
+   221→      const existing = localStorage.getItem(`wabot_acct_${email}`);
+   222→      if (existing) {
+   223→        toast.error("Email sudah terdaftar");
+   224→        setAuthLoading(false);
+   225→        return;
+   226→      }
+   227→      const acct = { id: `local_${Date.now()}`, email, name, password };
+   228→      localStorage.setItem(`wabot_acct_${email}`, JSON.stringify(acct));
+   229→      const authUser: AuthUser = { id: acct.id, email, name };
+   230→      saveUser(authUser);
+   231→      toast.success("Registrasi berhasil!");
+   232→    } else {
+   233→      const stored = localStorage.getItem(`wabot_acct_${email}`);
+   234→      if (!stored) {
+   235→        toast.error("Akun tidak ditemukan. Silakan daftar dulu.");
+   236→        setAuthLoading(false);
+   237→        return;
+   238→      }
+   239→      const acct = JSON.parse(stored);
+   240→      if (acct.password !== password) {
+   241→        toast.error("Password salah");
+   242→        setAuthLoading(false);
+   243→        return;
+   244→      }
+   245→      const authUser: AuthUser = { id: acct.id, email, name: acct.name };
+   246→      saveUser(authUser);
+   247→      toast.success(`Selamat datang, ${authUser.name}!`);
+   248→    }
+   249→    setAuthModal(null);
+   250→    setAuthLoading(false);
+   251→  }
+   252→
+   253→  /* ─── Form submit ─── */
+   254→  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+   255→    e.preventDefault();
+   256→    const fd = new FormData(e.currentTarget);
+   257→    const data = {
+   258→      name: (fd.get("name") as string)?.trim(),
+   259→      whatsappNumber: (fd.get("whatsappNumber") as string)?.trim(),
+   260→      email: (fd.get("email") as string)?.trim() || null,
+   261→      botType: (fd.get("botType") as string) || "customer-service",
+   262→      description: (fd.get("description") as string)?.trim() || null,
+   263→      userId: user?.id || null,
+   264→    };
+   265→    if (!data.name || !data.whatsappNumber) { toast.error("Nama dan nomor WhatsApp wajib diisi"); return; }
+   266→
+   267→    setLoading(true);
+   268→    try {
+   269→      const res = await fetch("/api/bots", {
+   270→        method: "POST",
+   271→        headers: { "Content-Type": "application/json" },
+   272→        body: JSON.stringify(data),
+   273→      });
+   274→      const json = await res.json();
+   275→      if (!res.ok) { toast.error(json.error || "Terjadi kesalahan"); return; }
+   276→      toast.success("Pendaftaran berhasil dikirim!");
+   277→      e.currentTarget.reset();
+   278→      setActiveTab("dashboard");
+   279→    } catch { toast.error("Gagal terhubung ke server"); }
+   280→    finally { setLoading(false); }
+   281→  }
+   282→
+   283→  /* ─── Status / Delete ─── */
+   284→  async function updateStatus(id: string, status: string) {
+   285→    try {
+   286→      const res = await fetch(`/api/bots/${id}/status`, {
+   287→        method: "PATCH",
+   288→        headers: { "Content-Type": "application/json" },
+   289→        body: JSON.stringify({ status, userId: user?.id }),
+   290→      });
+   291→      if (!res.ok) { const j = await res.json(); toast.error(j.error || "Gagal"); return; }
+   292→      toast.success(`Status: ${STATUS_MAP[status]?.label || status}`);
+   293→      fetchBots();
+   294→      if (selectedBot?.id === id) {
+   295→        setSelectedBot((prev) => prev ? { ...prev, status } : null);
+   296→      }
+   297→    } catch { toast.error("Gagal terhubung"); }
+   298→  }
+   299→
+   300→  async function deleteBot(id: string) {
+   301→    try {
+   302→      const res = await fetch(`/api/bots/${id}/status`, { method: "DELETE" });
+   303→      if (!res.ok) { toast.error("Gagal menghapus"); return; }
+   304→      toast.success("Berhasil dihapus");
+   305→      fetchBots();
+   306→      if (selectedBot?.id === id) setSelectedBot(null);
+   307→    } catch { toast.error("Gagal terhubung"); }
+   308→  }
+   309→
+   310→  /* ─── Save config ─── */
+   311→  async function saveConfig() {
+   312→    if (!showConfig) return;
+   313→    try {
+   314→      const res = await fetch(`/api/bots/${showConfig.id}/status`, {
+   315→        method: "PATCH",
+   316→        headers: { "Content-Type": "application/json" },
+   317→        body: JSON.stringify({
+   318→          welcomeMessage: cfgWelcome,
+   319→          autoReply: cfgAutoReply,
+   320→          operatingHours: cfgHours,
+   321→          userId: user?.id,
+   322→        }),
+   323→      });
+   324→      if (!res.ok) { toast.error("Gagal menyimpan konfigurasi"); return; }
+   325→      toast.success("Konfigurasi disimpan!");
+   326→      fetchBots();
+   327→      setShowConfig(null);
+   328→    } catch { toast.error("Gagal terhubung"); }
+   329→  }
+   330→
+   331→  /* ─── Generate webhook ─── */
+   332→  async function generateWebhook(id: string) {
+   333→    const webhookId = `wh_${id.slice(0, 8)}`;
+   334→    const url = `${window.location.origin}/api/webhook/${webhookId}`;
+   335→    try {
+   336→      const res = await fetch(`/api/bots/${id}/status`, {
+   337→        method: "PATCH",
+   338→        headers: { "Content-Type": "application/json" },
+   339→        body: JSON.stringify({ webhookUrl: url, userId: user?.id }),
+   340→      });
+   341→      if (!res.ok) { toast.error("Gagal generate webhook"); return; }
+   342→      toast.success("Webhook URL dibuat!");
+   343→      fetchBots();
+   344→      if (selectedBot?.id === id) setSelectedBot((p) => p ? { ...p, webhookUrl: url } : null);
+   345→    } catch { toast.error("Gagal terhubung"); }
+   346→  }
+   347→
+   348→  /* ─── Export CSV ─── */
+   349→  function exportCSV() {
+   350→    const filtered = getFilteredBots();
+   351→    const headers = ["Nama", "WhatsApp", "Email", "Jenis Bot", "Status", "Webhook", "Tanggal Daftar"];
+   352→    const rows = filtered.map((b) => [
+   353→      b.name, b.whatsappNumber, b.email || "", BOT_TYPES.find((t) => t.value === b.botType)?.label || b.botType,
+   354→      STATUS_MAP[b.status]?.label || b.status, b.webhookUrl || "-", new Date(b.createdAt).toLocaleDateString("id-ID"),
+   355→    ]);
+   356→    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+   357→    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+   358→    const link = document.createElement("a");
+   359→    link.href = URL.createObjectURL(blob);
+   360→    link.download = `wabot-exports-${new Date().toISOString().slice(0, 10)}.csv`;
+   361→    link.click();
+   362→    toast.success("File CSV berhasil diunduh");
+   363→  }
+   364→
+   365→  /* ─── Copy webhook ─── */
+   366→  function copyWebhook(url: string) {
+   367→    navigator.clipboard.writeText(url);
+   368→    toast.success("Webhook URL disalin!");
+   369→  }
+   370→
+   371→  /* ─── Helpers ─── */
+   372→  function getFilteredBots() {
+   373→    return bots.filter((b) => {
+   374→      const matchSearch =
+   375→        !searchQuery ||
+   376→        b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   377→        b.whatsappNumber.includes(searchQuery);
+   378→      const matchStatus = filterStatus === "all" || b.status === filterStatus;
+   379→      return matchSearch && matchStatus;
+   380→    });
+   381→  }
+   382→
+   383→  function scrollToSection(tab: string) {
+   384→    setActiveTab(tab as typeof activeTab);
+   385→    setMobileMenu(false);
+   386→    if (tab === "daftar") {
+   387→      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+   388→    }
+   389→  }
+   390→
+   391→  function openConfig(bot: BotReg) {
+   392→    setShowConfig(bot);
+   393→    setCfgWelcome(bot.welcomeMessage || "");
+   394→    setCfgAutoReply(bot.autoReply || "");
+   395→    setCfgHours(bot.operatingHours || "00:00 - 23:59");
+   396→  }
+   397→
+   398→  /* ═══════════════════════════════════════
+   399→     RENDER
+   400→     ═══════════════════════════════════════ */
+   401→  return (
+   402→    <div className="min-h-screen flex flex-col">
+   403→      {/* ─── DB SETUP BANNER ─── */}
+   404→      {dbSetupNeeded && (
+   405→        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3">
+   406→          <div className="max-w-6xl mx-auto flex items-start gap-3">
+   407→            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
+   408→            <div className="flex-1 min-w-0">
+   409→              <p className="text-yellow-200 text-sm font-medium">Database belum di-setup</p>
+   410→              <p className="text-yellow-300/70 text-xs mt-0.5">
+   411→                Buka link ini, paste SQL, lalu klik <b>Run</b>:&nbsp;
+   412→                <a href="https://supabase.com/dashboard/project/lbugditshniyphdzgjad/sql/new" target="_blank" rel="noopener"
+   413→                  className="underline text-yellow-300 hover:text-yellow-200">
+   414→                  SQL Editor &rarr;
+   415→                </a>
+   416→              </p>
+   417→              <button onClick={() => setDbSetupNeeded(false)}
+   418→                className="text-yellow-400/60 text-xs mt-1 hover:text-yellow-300">
+   419→                Tutup
+   420→              </button>
+   421→            </div>
+   422→          </div>
+   423→        </div>
+   424→      )}
+   425→      {/* ─── AUTH MODAL ─── */}
+   426→      {authModal && (
+   427→        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+   428→          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setAuthModal(null)} />
+   429→          <div className="relative w-full max-w-md rounded-2xl border border-dark-border bg-dark-card p-6 md:p-8 animate-fade-in-up">
+   430→            <button onClick={() => setAuthModal(null)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
+   431→              <X className="w-4 h-4" />
+   432→            </button>
+   433→
+   434→            <div className="flex items-center gap-2 mb-6">
+   435→              <div className="w-9 h-9 rounded-xl bg-wa-green/10 border border-wa-green/20 flex items-center justify-center">
+   436→                {authModal === "login" ? <LogIn className="w-4 h-4 text-wa-green" /> : <UserPlus className="w-4 h-4 text-wa-green" />}
+   437→              </div>
+   438→              <div>
+   439→                <h3 className="text-white font-semibold">
+   440→                  {authModal === "login" ? "Masuk" : "Daftar Akun"}
+   441→                </h3>
+   442→                <p className="text-xs text-gray-500">
+   443→                  {authModal === "login" ? "Masuk untuk mengelola bot Anda" : "Buat akun baru di WaBot Hub"}
+   444→                </p>
+   445→              </div>
+   446→            </div>
+   447→
+   448→            <form onSubmit={(e) => handleAuth(e, authModal)} className="space-y-4">
+   449→              {authModal === "register" && (
+   450→                <div>
+   451→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nama Lengkap</label>
+   452→                  <input name="name" type="text" required placeholder="Nama Anda"
+   453→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+   454→                </div>
+   455→              )}
+   456→              <div>
+   457→                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+   458→                <div className="relative">
+   459→                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+   460→                  <input name="email" type="email" required placeholder="email@contoh.com"
+   461→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+   462→                </div>
+   463→              </div>
+   464→              <div>
+   465→                <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
+   466→                <div className="relative">
+   467→                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+   468→                  <input name="password" type="password" required placeholder="Min. 6 karakter" minLength={6}
+   469→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+   470→                </div>
+   471→              </div>
+   472→
+   473→              <button type="submit" disabled={authLoading}
+   474→                className="btn-primary w-full py-3 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+   475→                {authLoading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Memproses...</> :
+   476→                  authModal === "login" ? <><LogIn className="w-4 h-4" /> Masuk</> : <><UserPlus className="w-4 h-4" /> Daftar</>}
+   477→              </button>
+   478→            </form>
+   479→
+   480→            <div className="mt-4 text-center text-xs text-gray-500">
+   481→              {authModal === "login" ? "Belum punya akun?" : "Sudah punya akun?"}{" "}
+   482→              <button onClick={() => setAuthModal(authModal === "login" ? "register" : "login")}
+   483→                className="text-wa-green hover:underline font-medium">
+   484→                {authModal === "login" ? "Daftar" : "Masuk"}
+   485→              </button>
+   486→            </div>
+   487→          </div>
+   488→        </div>
+   489→      )}
+   490→
+   491→      {/* ─── BOT DETAIL SLIDE-OVER ─── */}
+   492→      {selectedBot && (
+   493→        <div className="fixed inset-0 z-[90] flex justify-end">
+   494→          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedBot(null)} />
+   495→          <div className="relative w-full max-w-lg bg-dark-card border-l border-dark-border overflow-y-auto custom-scroll animate-fade-in-right">
+   496→            <div className="sticky top-0 z-10 bg-dark-card/95 backdrop-blur-sm border-b border-dark-border px-6 py-4 flex items-center justify-between">
+   497→              <h3 className="text-white font-semibold flex items-center gap-2">
+   498→                <Eye className="w-4 h-4 text-wa-green" /> Detail Bot
+   499→              </h3>
+   500→              <button onClick={() => setSelectedBot(null)} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
+   501→                <X className="w-4 h-4" />
+   502→              </button>
+   503→            </div>
+   504→
+   505→            <div className="p-6 space-y-6">
+   506→              <div>
+   507→                <div className="flex items-center justify-between mb-2">
+   508→                  <h4 className="text-xl font-bold text-white">{selectedBot.name}</h4>
+   509→                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_MAP[selectedBot.status]?.class || "status-pending"}`}>
+   510→                    {STATUS_MAP[selectedBot.status]?.label || selectedBot.status}
+   511→                  </span>
+   512→                </div>
+   513→                <p className="text-gray-400 text-sm">{selectedBot.description || "Tidak ada deskripsi"}</p>
+   514→              </div>
+   515→
+   516→              <div className="grid grid-cols-2 gap-3">
+   517→                {[
+   518→                  { icon: Phone, label: "WhatsApp", value: selectedBot.whatsappNumber },
+   519→                  { icon: Mail, label: "Email", value: selectedBot.email || "-" },
+   520→                  { icon: Bot, label: "Jenis", value: BOT_TYPES.find((t) => t.value === selectedBot.botType)?.label || selectedBot.botType },
+   521→                  { icon: Clock, label: "Terdaftar", value: new Date(selectedBot.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) },
+   522→                ].map((item) => (
+   523→                  <div key={item.label} className="rounded-xl bg-[#0d0d0d] border border-dark-border p-3">
+   524→                    <div className="flex items-center gap-1.5 text-gray-500 text-xs mb-1">
+   525→                      <item.icon className="w-3 h-3" /> {item.label}
+   526→                    </div>
+   527→                    <div className="text-white text-sm font-medium truncate">{item.value}</div>
+   528→                  </div>
+   529→                ))}
+   530→              </div>
+   531→
+   532→              {/* Webhook */}
+   533→              <div className="rounded-xl bg-[#0d0d0d] border border-dark-border p-4">
+   534→                <div className="flex items-center justify-between mb-2">
+   535→                  <div className="flex items-center gap-2 text-sm font-medium text-white">
+   536→                    <Webhook className="w-4 h-4 text-wa-green" /> Webhook URL
+   537→                  </div>
+   538→                  {selectedBot.status === "approved" && (
+   539→                    <button onClick={() => generateWebhook(selectedBot.id)}
+   540→                      className="text-xs text-wa-green hover:underline flex items-center gap-1">
+   541→                      <RefreshCw className="w-3 h-3" /> Generate
+   542→                    </button>
+   543→                  )}
+   544→                </div>
+   545→                {selectedBot.webhookUrl ? (
+   546→                  <div className="flex items-center gap-2">
+   547→                    <code className="flex-1 text-xs text-gray-400 bg-dark-bg rounded-lg px-3 py-2 truncate block">
+   548→                      {selectedBot.webhookUrl}
+   549→                    </code>
+   550→                    <button onClick={() => copyWebhook(selectedBot.webhookUrl!)}
+   551→                      className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-wa-green transition-colors">
+   552→                      <Copy className="w-4 h-4" />
+   553→                    </button>
+   554→                  </div>
+   555→                ) : (
+   556→                  <p className="text-xs text-gray-600">
+   557→                    {selectedBot.status === "approved" ? "Klik Generate untuk membuat webhook URL" : "Webhook tersedia setelah bot disetujui"}
+   558→                  </p>
+   559→                )}
+   560→              </div>
+   561→
+   562→              {/* Config buttons */}
+   563→              <div className="flex gap-2">
+   564→                <button onClick={() => openConfig(selectedBot)}
+   565→                  className="flex-1 btn-outline py-2.5 rounded-xl border border-dark-border-hover text-sm font-medium flex items-center justify-center gap-2 text-white">
+   566→                  <Settings className="w-4 h-4" /> Konfigurasi
+   567→                </button>
+   568→                <button onClick={() => { setSelectedBot(null); setActiveTab("dashboard"); }}
+   569→                  className="flex-1 btn-outline py-2.5 rounded-xl border border-dark-border-hover text-sm font-medium flex items-center justify-center gap-2 text-white">
+   570→                  <History className="w-4 h-4" /> Riwayat
+   571→                </button>
+   572→              </div>
+   573→
+   574→              {/* Status Actions */}
+   575→              <div className="border-t border-dark-border pt-4">
+   576→                <h5 className="text-sm font-medium text-gray-300 mb-3">Ubah Status</h5>
+   577→                <div className="flex gap-2">
+   578→                  <button onClick={() => updateStatus(selectedBot.id, "approved")}
+   579→                    className="flex-1 py-2 rounded-xl text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors">
+   580→                    Setujui
+   581→                  </button>
+   582→                  <button onClick={() => updateStatus(selectedBot.id, "rejected")}
+   583→                    className="flex-1 py-2 rounded-xl text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors">
+   584→                    Tolak
+   585→                  </button>
+   586→                  <button onClick={() => updateStatus(selectedBot.id, "pending")}
+   587→                    className="flex-1 py-2 rounded-xl text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors">
+   588→                    Reset
+   589→                  </button>
+   590→                </div>
+   591→              </div>
+   592→
+   593→              {/* Delete */}
+   594→              <button onClick={() => { deleteBot(selectedBot.id); setSelectedBot(null); }}
+   595→                className="w-full py-2.5 rounded-xl text-xs font-medium bg-red-500/5 text-red-400 border border-red-500/10 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2">
+   596→                <Trash2 className="w-3.5 h-3.5" /> Hapus Bot
+   597→              </button>
+   598→            </div>
+   599→          </div>
+   600→        </div>
+   601→      )}
+   602→
+   603→      {/* ─── CONFIG MODAL ─── */}
+   604→      {showConfig && (
+   605→        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+   606→          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowConfig(null)} />
+   607→          <div className="relative w-full max-w-md rounded-2xl border border-dark-border bg-dark-card p-6 md:p-8 animate-fade-in-up">
+   608→            <button onClick={() => setShowConfig(null)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
+   609→              <X className="w-4 h-4" />
+   610→            </button>
+   611→            <div className="flex items-center gap-2 mb-6">
+   612→              <div className="w-9 h-9 rounded-xl bg-wa-green/10 border border-wa-green/20 flex items-center justify-center">
+   613→                <Settings className="w-4 h-4 text-wa-green" />
+   614→              </div>
+   615→              <div>
+   616→                <h3 className="text-white font-semibold">Konfigurasi Bot</h3>
+   617→                <p className="text-xs text-gray-500">{showConfig.name}</p>
+   618→              </div>
+   619→            </div>
+   620→            <div className="space-y-4">
+   621→              <div>
+   622→                <label className="block text-sm font-medium text-gray-300 mb-1.5">Pesan Sambutan</label>
+   623→                <textarea rows={3} value={cfgWelcome} onChange={(e) => setCfgWelcome(e.target.value)}
+   624→                  placeholder="Halo! Ada yang bisa saya bantu?"
+   625→                  className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none transition-all" />
+   626→              </div>
+   627→              <div>
+   628→                <label className="block text-sm font-medium text-gray-300 mb-1.5">Auto Reply</label>
+   629→                <textarea rows={3} value={cfgAutoReply} onChange={(e) => setCfgAutoReply(e.target.value)}
+   630→                  placeholder="Terima kasih telah menghubungi kami. Kami akan segera membalas pesan Anda."
+   631→                  className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none transition-all" />
+   632→              </div>
+   633→              <div>
+   634→                <label className="block text-sm font-medium text-gray-300 mb-1.5">Jam Operasional</label>
+   635→                <input value={cfgHours} onChange={(e) => setCfgHours(e.target.value)}
+   636→                  placeholder="00:00 - 23:59"
+   637→                  className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+   638→              </div>
+   639→              <button onClick={saveConfig}
+   640→                className="btn-primary w-full py-3 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm">
+   641→                Simpan Konfigurasi
+   642→              </button>
+   643→            </div>
+   644→          </div>
+   645→        </div>
+   646→      )}
+   647→
+   648→      {/* ═══════════════════════════════════════
+   649→          NAVBAR
+   650→          ═══════════════════════════════════════ */}
+   651→      <nav className="fixed top-0 inset-x-0 z-50 nav-blur border-b border-dark-border">
+   652→        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+   653→          <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab("beranda"); setMobileMenu(false); }}>
+   654→            <div className="w-8 h-8 rounded-lg bg-wa-green/10 border border-wa-green/20 flex items-center justify-center">
+   655→              <Bot className="w-4 h-4 text-wa-green" />
+   656→            </div>
+   657→            <span className="font-semibold text-white tracking-tight">WaBot Hub</span>
+   658→          </div>
+   659→
+   660→          <div className="hidden md:flex items-center gap-1">
+   661→            {(["beranda", "daftar", "dashboard"] as const).map((tab) => (
+   662→              <button key={tab} onClick={() => scrollToSection(tab)}
+   663→                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+   664→                  activeTab === tab ? "bg-wa-green/10 text-wa-green" : "text-gray-400 hover:text-white hover:bg-white/5"
+   665→                }`}>
+   666→                {tab === "beranda" ? "Beranda" : tab === "daftar" ? "Daftar Bot" : "Dashboard"}
+   667→              </button>
+   668→            ))}
+   669→          </div>
+   670→
+   671→          <div className="hidden md:flex items-center gap-2">
+   672→            {user ? (
+   673→              <div className="flex items-center gap-3">
+   674→                <div className="flex items-center gap-2 text-sm">
+   675→                  <div className="w-7 h-7 rounded-full bg-wa-green/10 border border-wa-green/20 flex items-center justify-center">
+   676→                    <span className="text-wa-green text-xs font-bold">{user.name?.[0]?.toUpperCase() || "U"}</span>
+   677→                  </div>
+   678→                  <span className="text-gray-300 text-sm max-w-[100px] truncate">{user.name || user.email}</span>
+   679→                </div>
+   680→                <button onClick={() => { saveUser(null); toast.success("Berhasil keluar"); }}
+   681→                  className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-red-400 transition-colors" title="Keluar">
+   682→                  <LogOut className="w-4 h-4" />
+   683→                </button>
+   684→              </div>
+   685→            ) : (
+   686→              <button onClick={() => setAuthModal("login")}
+   687→                className="btn-primary px-4 py-2 rounded-xl bg-wa-green text-dark-bg font-semibold text-xs flex items-center gap-1.5">
+   688→                <LogIn className="w-3.5 h-3.5" /> Masuk
+   689→              </button>
+   690→            )}
+   691→          </div>
+   692→
+   693→          <button onClick={() => setMobileMenu(!mobileMenu)} className="md:hidden p-2 rounded-lg hover:bg-white/5 transition-colors">
+   694→            {mobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+   695→          </button>
+   696→        </div>
+   697→
+   698→        {mobileMenu && (
+   699→          <div className="md:hidden border-t border-dark-border bg-[#0a0a0a]/95 backdrop-blur-sm px-4 py-3 space-y-1">
+   700→            {(["beranda", "daftar", "dashboard"] as const).map((tab) => (
+   701→              <button key={tab} onClick={() => scrollToSection(tab)}
+   702→                className={`block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+   703→                  activeTab === tab ? "bg-wa-green/10 text-wa-green" : "text-gray-400 hover:text-white hover:bg-white/5"
+   704→                }`}>
+   705→                {tab === "beranda" ? "Beranda" : tab === "daftar" ? "Daftar Bot" : "Dashboard"}
+   706→              </button>
+   707→            ))}
+   708→            <div className="border-t border-dark-border pt-2 mt-1">
+   709→              {user ? (
+   710→                <button onClick={() => { saveUser(null); setMobileMenu(false); toast.success("Berhasil keluar"); }}
+   711→                  className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/5 flex items-center gap-2">
+   712→                  <LogOut className="w-4 h-4" /> Keluar ({user.name || user.email})
+   713→                </button>
+   714→              ) : (
+   715→                <button onClick={() => { setMobileMenu(false); setAuthModal("login"); }}
+   716→                  className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-wa-green hover:bg-wa-green/5 flex items-center gap-2">
+   717→                  <LogIn className="w-4 h-4" /> Masuk / Daftar
+   718→                </button>
+   719→              )}
+   720→            </div>
+   721→          </div>
+   722→        )}
+   723→      </nav>
+   724→
+   725→      <main className="flex-1 pt-14">
+   726→        {/* ═══════════════════════════════
+   727→            BERANDA
+   728→            ═══════════════════════════════ */}
+   729→        {activeTab === "beranda" && (
+   730→          <>
+   731→            {/* HERO */}
+   732→            <section className="relative overflow-hidden">
+   733→              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-wa-green/8 blur-[120px] animate-glow-drift pointer-events-none" />
+   734→              <div className="absolute top-20 right-10 w-2 h-2 rounded-full bg-wa-green animate-pulse-dot pointer-events-none" />
+   735→              <div className="absolute top-40 left-20 w-1.5 h-1.5 rounded-full bg-wa-green/60 animate-pulse-dot pointer-events-none" style={{ animationDelay: "0.7s" }} />
+   736→
+   737→              <div className="max-w-6xl mx-auto px-4 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center relative">
+   738→                <div>
+   739→                  <div className="animate-fade-in-up">
+   740→                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-wa-green/20 bg-wa-green/5 text-wa-green text-xs font-medium mb-6">
+   741→                      <span className="w-1.5 h-1.5 rounded-full bg-wa-green animate-pulse-dot" />
+   742→                      Platform Bot WhatsApp #1
+   743→                    </div>
+   744→                  </div>
+   745→                  <h1 className="animate-fade-in-up text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight">
+   746→                    Daftarkan Bot
+   747→                    <br />
+   748→                    <span className="text-wa-green">WhatsApp</span> Anda
+   749→                  </h1>
+   750→                  <p className="animate-fade-in-up mt-5 text-gray-400 text-base md:text-lg leading-relaxed max-w-md" style={{ animationDelay: "0.15s" }}>
+   751→                    Buat, kelola, dan monitor bot WhatsApp untuk bisnis Anda. Satu platform untuk semua kebutuhan otomasi chat.
+   752→                  </p>
+   753→                  <div className="animate-fade-in-up flex flex-wrap gap-3 mt-8" style={{ animationDelay: "0.3s" }}>
+   754→                    <button onClick={() => scrollToSection("daftar")}
+   755→                      className="btn-primary px-6 py-3 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center gap-2 animate-green-glow">
+   756→                      Daftarkan Bot <ArrowRight className="w-4 h-4" />
+   757→                    </button>
+   758→                    <button onClick={() => scrollToSection("dashboard")}
+   759→                      className="btn-outline px-6 py-3 rounded-xl border border-dark-border-hover text-white font-medium text-sm flex items-center gap-2">
+   760→                      <BarChart3 className="w-4 h-4" /> Lihat Dashboard
+   761→                    </button>
+   762→                  </div>
+   763→                </div>
+   764→
+   765→                <div className="animate-fade-in-right hidden md:flex justify-center">
+   766→                  <div className="animate-float w-full max-w-sm">
+   767→                    <div className="rounded-2xl border border-dark-border-hover bg-dark-card overflow-hidden shadow-2xl shadow-black/40">
+   768→                      <div className="px-4 py-3 bg-wa-green-dark flex items-center gap-3">
+   769→                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><Bot className="w-4 h-4 text-white" /></div>
+   770→                        <div>
+   771→                          <div className="text-white text-sm font-medium">WaBot Assistant</div>
+   772→                          <div className="text-white/60 text-xs flex items-center gap-1">
+   773→                            <span className="w-1.5 h-1.5 rounded-full bg-green-300" /> Online
+   774→                          </div>
+   775→                        </div>
+   776→                      </div>
+   777→                      <div className="p-4 space-y-3 min-h-[260px] bg-[#0d1117]">
+   778→                        <div className="flex gap-2 animate-chat-bounce" style={{ animationDelay: "0.2s" }}>
+   779→                          <div className="w-6 h-6 rounded-full bg-wa-green/20 flex items-center justify-center shrink-0 mt-1"><Bot className="w-3 h-3 text-wa-green" /></div>
+   780→                          <div className="bg-[#1a2332] rounded-2xl rounded-tl-sm px-3.5 py-2.5 max-w-[75%]">
+   781→                            <p className="text-sm text-gray-200">Halo! Saya bot WhatsApp Anda. Ada yang bisa saya bantu?</p>
+   782→                            <span className="text-[10px] text-gray-500 mt-1 block">10:42</span>
+   783→                          </div>
+   784→                        </div>
+   785→                        <div className="flex justify-end animate-chat-bounce" style={{ animationDelay: "0.8s" }}>
+   786→                          <div className="bg-wa-green-dark rounded-2xl rounded-tr-sm px-3.5 py-2.5 max-w-[75%]">
+   787→                            <p className="text-sm text-white">Saya ingin cek status pesanan saya</p>
+   788→                            <span className="text-[10px] text-white/50 mt-1 block text-right">10:42</span>
+   789→                          </div>
+   790→                        </div>
+   791→                        <div className="flex gap-2 animate-chat-bounce" style={{ animationDelay: "1.5s" }}>
+   792→                          <div className="w-6 h-6 rounded-full bg-wa-green/20 flex items-center justify-center shrink-0 mt-1"><Bot className="w-3 h-3 text-wa-green" /></div>
+   793→                          <div className="bg-[#1a2332] rounded-2xl rounded-tl-sm px-4 py-3">
+   794→                            <div className="flex gap-1.5">
+   795→                              <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+   796→                            </div>
+   797→                          </div>
+   798→                        </div>
+   799→                      </div>
+   800→                      <div className="px-4 py-3 bg-[#0d1117] border-t border-dark-border flex items-center gap-2">
+   801→                        <div className="flex-1 bg-[#1a2332] rounded-full px-4 py-2 text-xs text-gray-500">Ketik pesan...</div>
+   802→                        <div className="w-8 h-8 rounded-full bg-wa-green flex items-center justify-center"><Send className="w-3.5 h-3.5 text-white" /></div>
+   803→                      </div>
+   804→                    </div>
+   805→                  </div>
+   806→                </div>
+   807→              </div>
+   808→            </section>
+   809→
+   810→            {/* STATS */}
+   811→            <section className="border-y border-dark-border">
+   812→              <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+   813→                {[
+   814→                  { value: "500+", label: "Bot Terdaftar", icon: Bot },
+   815→                  { value: "99.9%", label: "Uptime Server", icon: Shield },
+   816→                  { value: "24/7", label: "Support Aktif", icon: Clock },
+   817→                  { value: "1.2M+", label: "Pesan / Bulan", icon: MessageSquare },
+   818→                ].map((stat, i) => (
+   819→                  <div key={stat.label} className="scroll-fade flex items-center gap-3 justify-center md:justify-start" style={{ transitionDelay: `${i * 100}ms` }}>
+   820→                    <div className="stat-hover w-10 h-10 rounded-xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center">
+   821→                      <stat.icon className="w-5 h-5 text-wa-green/70" />
+   822→                    </div>
+   823→                    <div>
+   824→                      <div className="text-xl font-bold text-white">{stat.value}</div>
+   825→                      <div className="text-xs text-gray-500">{stat.label}</div>
+   826→                    </div>
+   827→                  </div>
+   828→                ))}
+   829→              </div>
+   830→            </section>
+   831→
+   832→            {/* FEATURES */}
+   833→            <section className="py-20 md:py-24">
+   834→              <div className="max-w-6xl mx-auto px-4">
+   835→                <div className="text-center mb-14 scroll-fade">
+   836→                  <h2 className="text-3xl md:text-4xl font-bold text-white">
+   837→                    Kenapa Pilih <span className="text-wa-green">WaBot Hub</span>?
+   838→                  </h2>
+   839→                  <p className="text-gray-400 mt-3 max-w-lg mx-auto">Platform terlengkap untuk mengelola bot WhatsApp bisnis Anda.</p>
+   840→                </div>
+   841→                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   842→                  {[
+   843→                    { icon: MessageSquare, title: "Auto Reply Cerdas", desc: "Balas pesan masuk secara otomatis dengan template yang bisa dikustomisasi sesuai kebutuhan bisnis Anda." },
+   844→                    { icon: Users, title: "Multi-User Management", desc: "Kelola banyak bot dalam satu dashboard. Cocok untuk agensi atau bisnis dengan beberapa cabang." },
+   845→                    { icon: BarChart3, title: "Analitik Real-time", desc: "Pantau performa bot Anda dengan dashboard analitik yang menampilkan statistik pesan dan respons." },
+   846→                    { icon: Zap, title: "Setup Instan", desc: "Daftar dan konfigurasi bot dalam hitungan menit. Tanpa instalasi rumit, langsung siap pakai." },
+   847→                    { icon: Shield, title: "Keamanan Terjamin", desc: "Enkripsi end-to-end dan autentikasi two-factor untuk melindungi data bisnis Anda." },
+   848→                    { icon: Globe, title: "API & Webhook", desc: "Integrasikan bot WhatsApp Anda dengan sistem CRM, e-commerce, atau tools lainnya via REST API dan webhook." },
+   849→                  ].map((feat, i) => (
+   850→                    <div key={feat.title} className="scroll-fade card-hover group rounded-2xl border border-dark-border bg-dark-card p-6" style={{ transitionDelay: `${i * 80}ms` }}>
+   851→                      <div className="w-11 h-11 rounded-xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center mb-4 group-hover:bg-wa-green/10 group-hover:border-wa-green/20 transition-all duration-300">
+   852→                        <feat.icon className="w-5 h-5 text-wa-green/70" />
+   853→                      </div>
+   854→                      <h3 className="text-white font-semibold mb-2">{feat.title}</h3>
+   855→                      <p className="text-gray-400 text-sm leading-relaxed">{feat.desc}</p>
+   856→                    </div>
+   857→                  ))}
+   858→                </div>
+   859→              </div>
+   860→            </section>
+   861→
+   862→            <div className="shimmer-divider max-w-6xl mx-auto" />
+   863→
+   864→            {/* HOW IT WORKS */}
+   865→            <section className="py-20 md:py-24">
+   866→              <div className="max-w-6xl mx-auto px-4">
+   867→                <div className="text-center mb-14 scroll-fade">
+   868→                  <h2 className="text-3xl md:text-4xl font-bold text-white">Cara Kerja</h2>
+   869→                  <p className="text-gray-400 mt-3 max-w-md mx-auto">Tiga langkah mudah untuk mulai menggunakan bot WhatsApp Anda.</p>
+   870→                </div>
+   871→                <div className="grid md:grid-cols-3 gap-8">
+   872→                  {[
+   873→                    { step: "01", icon: Send, title: "Daftarkan Bot", desc: "Isi formulir pendaftaran dengan informasi bot dan nomor WhatsApp bisnis Anda. Proses cepat tanpa biaya." },
+   874→                    { step: "02", icon: RefreshCw, title: "Konfigurasi", desc: "Atur pesan balasan otomatis, buat menu interaktif, dan sesuaikan perilaku bot sesuai kebutuhan." },
+   875→                    { step: "03", icon: CheckCircle2, title: "Bot Aktif!", desc: "Setelah disetujui, bot Anda langsung aktif dan mulai melayani pelanggan 24 jam non-stop." },
+   876→                  ].map((item, i) => (
+   877→                    <div key={item.step} className={`scroll-fade-${i === 0 ? "left" : i === 2 ? "right" : "scale"} relative`} style={{ transitionDelay: `${i * 120}ms` }}>
+   878→                      <div className="card-hover rounded-2xl border border-dark-border bg-dark-card p-6 text-center h-full">
+   879→                        <div className="text-5xl font-black text-wa-green/10 absolute top-4 right-6">{item.step}</div>
+   880→                        <div className="w-14 h-14 rounded-2xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center mx-auto mb-5">
+   881→                          <item.icon className="w-6 h-6 text-wa-green" />
+   882→                        </div>
+   883→                        <h3 className="text-white font-semibold text-lg mb-2">{item.title}</h3>
+   884→                        <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+   885→                      </div>
+   886→                    </div>
+   887→                  ))}
+   888→                </div>
+   889→              </div>
+   890→            </section>
+   891→
+   892→            {/* FAQ */}
+   893→            <section className="py-20 border-t border-dark-border">
+   894→              <div className="max-w-2xl mx-auto px-4">
+   895→                <div className="text-center mb-12 scroll-fade"><h2 className="text-3xl md:text-4xl font-bold text-white">Pertanyaan Umum</h2></div>
+   896→                <div className="space-y-3">
+   897→                  {[
+   898→                    { q: "Apakah pendaftaran bot gratis?", a: "Ya, pendaftaran bot di WaBot Hub sepenuhnya gratis. Anda hanya perlu mengisi formulir dan menunggu persetujuan dari tim kami." },
+   899→                    { q: "Berapa lama proses persetujuan?", a: "Proses review dan persetujuan biasanya memakan waktu 1x24 jam kerja. Untuk permintaan dengan volume tinggi, bisa memakan waktu hingga 3 hari kerja." },
+   900→                    { q: "Jenis bot apa saja yang didukung?", a: "Kami mendukung customer service otomatis, marketing & promo, transaksi & pembayaran, notifikasi & reminder, serta AI chatbot." },
+   901→                    { q: "Apakah data saya aman?", a: "Keamanan data adalah prioritas utama kami. Semua data dienkripsi dan disimpan di server yang aman. Kami tidak pernah membagikan informasi pribadi Anda." },
+   902→                    { q: "Bisa integrasi dengan sistem yang sudah ada?", a: "Ya! WaBot Hub menyediakan REST API dan Webhook yang bisa diintegrasikan dengan CRM, e-commerce, atau sistem internal perusahaan Anda." },
+   903→                  ].map((faq, i) => (
+   904→                    <details key={i} className="scroll-fade faq-hover group rounded-xl border border-dark-border bg-dark-card overflow-hidden" style={{ transitionDelay: `${i * 60}ms` }}>
+   905→                      <summary className="flex items-center justify-between cursor-pointer px-5 py-4 text-white font-medium text-sm list-none">
+   906→                        {faq.q}
+   907→                        <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform duration-300" />
+   908→                      </summary>
+   909→                      <div className="px-5 pb-4 text-gray-400 text-sm leading-relaxed border-t border-dark-border pt-3">{faq.a}</div>
+   910→                    </details>
+   911→                  ))}
+   912→                </div>
+   913→              </div>
+   914→            </section>
+   915→
+   916→            {/* CTA */}
+   917→            <section className="py-20">
+   918→              <div className="max-w-6xl mx-auto px-4">
+   919→                <div className="scroll-fade-scale relative rounded-3xl border border-wa-green/10 overflow-hidden">
+   920→                  <div className="absolute inset-0 bg-gradient-to-br from-wa-green-dark/20 via-dark-bg to-dark-bg" />
+   921→                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-wa-green/5 blur-[100px] animate-glow-pulse pointer-events-none" />
+   922→                  <div className="relative px-6 py-16 md:py-20 text-center">
+   923→                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Siap Membuat Bot WhatsApp Anda?</h2>
+   924→                    <p className="text-gray-400 max-w-md mx-auto mb-8">Bergabung dengan ratusan bisnis yang sudah menggunakan WaBot Hub untuk otomasi WhatsApp mereka.</p>
+   925→                    <button onClick={() => scrollToSection("daftar")}
+   926→                      className="btn-primary px-8 py-3.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm animate-green-glow inline-flex items-center gap-2">
+   927→                      Daftar Sekarang — Gratis <ArrowRight className="w-4 h-4" />
+   928→                    </button>
+   929→                  </div>
+   930→                </div>
+   931→              </div>
+   932→            </section>
+   933→
+   934→            {/* FOOTER */}
+   935→            <footer className="border-t border-dark-border bg-[#070707]">
+   936→              <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
+   937→                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+   938→                  <div className="sm:col-span-2 lg:col-span-1">
+   939→                    <div className="flex items-center gap-2 mb-4">
+   940→                      <div className="w-8 h-8 rounded-lg bg-wa-green/10 border border-wa-green/20 flex items-center justify-center"><Bot className="w-4 h-4 text-wa-green" /></div>
+   941→                      <span className="font-semibold text-white">WaBot Hub</span>
+   942→                    </div>
+   943→                    <p className="text-gray-500 text-sm leading-relaxed max-w-xs">Platform pendaftaran dan pengelolaan bot WhatsApp terpercaya untuk bisnis di Indonesia.</p>
+   944→                  </div>
+   945→                  <div>
+   946→                    <h4 className="text-white font-medium text-sm mb-4">Navigasi</h4>
+   947→                    <div className="space-y-2.5">
+   948→                      {[{ label: "Beranda", tab: "beranda" }, { label: "Daftar Bot", tab: "daftar" }, { label: "Dashboard", tab: "dashboard" }].map((link) => (
+   949→                        <button key={link.tab} onClick={() => scrollToSection(link.tab)} className="block text-gray-500 text-sm footer-link hover:text-wa-green">{link.label}</button>
+   950→                      ))}
+   951→                    </div>
+   952→                  </div>
+   953→                  <div>
+   954→                    <h4 className="text-white font-medium text-sm mb-4">Kontak</h4>
+   955→                    <div className="space-y-3">
+   956→                      <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-gray-500 text-sm footer-link hover:text-wa-green">
+   957→                        <Phone className="w-3.5 h-3.5" /> +62 812-3456-7890
+   958→                      </a>
+   959→                      <a href="mailto:support@wabothub.id" className="flex items-center gap-2.5 text-gray-500 text-sm footer-link hover:text-wa-green">
+   960→                        <Mail className="w-3.5 h-3.5" /> support@wabothub.id
+   961→                      </a>
+   962→                    </div>
+   963→                  </div>
+   964→                  <div>
+   965→                    <h4 className="text-white font-medium text-sm mb-4">Alamat</h4>
+   966→                    <div className="flex items-start gap-2.5 text-gray-500 text-sm leading-relaxed">
+   967→                      <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   968→                      <span>Jl. Teknologi No. 42, Gedung Inovasi Lantai 5,<br />Jakarta Selatan, DKI Jakarta 12345</span>
+   969→                    </div>
+   970→                  </div>
+   971→                </div>
+   972→                <div className="shimmer-divider my-8" />
+   973→                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
+   974→                  <span>&copy; 2026 WaBot Hub. Semua hak dilindungi.</span>
+   975→                  <div className="flex items-center gap-4">
+   976→                    <span className="footer-link cursor-pointer">Kebijakan Privasi</span>
+   977→                    <span className="footer-link cursor-pointer">Syarat & Ketentuan</span>
+   978→                  </div>
+   979→                </div>
+   980→              </div>
+   981→            </footer>
+   982→          </>
+   983→        )}
+   984→
+   985→        {/* ═══════════════════════════════
+   986→            DAFTAR TAB
+   987→            ═══════════════════════════════ */}
+   988→        {activeTab === "daftar" && (
+   989→          <section ref={formRef} className="py-12 md:py-20">
+   990→            <div className="max-w-xl mx-auto px-4">
+   991→              <div className="text-center mb-10 animate-fade-in-up">
+   992→                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-wa-green/20 bg-wa-green/5 text-wa-green text-xs font-medium mb-4">
+   993→                  <Bot className="w-3 h-3" /> Formulir Pendaftaran
+   994→                </div>
+   995→                <h2 className="text-3xl font-bold text-white">Daftarkan Bot Anda</h2>
+   996→                <p className="text-gray-400 mt-2 text-sm">
+   997→                  {user ? `Login sebagai ${user.name || user.email}` : "Daftar atau login untuk mengelola bot Anda"}
+   998→                </p>
+   999→                {!user && (
+  1000→                  <button onClick={() => setAuthModal("login")} className="mt-2 text-wa-green text-sm hover:underline">
+  1001→                    Masuk terlebih dahulu →
+  1002→                  </button>
+  1003→                )}
+  1004→              </div>
+  1005→
+  1006→              <form onSubmit={handleSubmit}
+  1007→                className="animate-fade-in-up rounded-2xl border border-dark-border bg-dark-card p-6 md:p-8 space-y-5" style={{ animationDelay: "0.15s" }}>
+  1008→                <div>
+  1009→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nama Lengkap <span className="text-red-400">*</span></label>
+  1010→                  <input name="name" type="text" required placeholder="Masukkan nama lengkap Anda"
+  1011→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1012→                </div>
+  1013→                <div>
+  1014→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nomor WhatsApp <span className="text-red-400">*</span></label>
+  1015→                  <div className="relative">
+  1016→                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+  1017→                    <input name="whatsappNumber" type="tel" required placeholder="+62 812-3456-7890"
+  1018→                      className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1019→                  </div>
+  1020→                </div>
+  1021→                <div>
+  1022→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Email <span className="text-gray-600">(opsional)</span></label>
+  1023→                  <div className="relative">
+  1024→                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+  1025→                    <input name="email" type="email" placeholder="email@contoh.com"
+  1026→                      className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1027→                  </div>
+  1028→                </div>
+  1029→                <div>
+  1030→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Jenis Bot</label>
+  1031→                  <select name="botType"
+  1032→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white appearance-none cursor-pointer transition-all">
+  1033→                    {BOT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+  1034→                  </select>
+  1035→                </div>
+  1036→                <div>
+  1037→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Deskripsi Bot <span className="text-gray-600">(opsional)</span></label>
+  1038→                  <textarea name="description" rows={3} placeholder="Jelaskan fungsi dan tujuan bot Anda..."
+  1039→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none transition-all" />
+  1040→                </div>
+  1041→                <button type="submit" disabled={loading}
+  1042→                  className="btn-primary w-full py-3.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed animate-green-glow">
+  1043→                  {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Mendaftarkan...</> : <><Send className="w-4 h-4" /> Daftarkan Bot</>}
+  1044→                </button>
+  1045→                <p className="text-center text-xs text-gray-600">Dengan mendaftar, Anda menyetujui Syarat & Ketentuan kami.</p>
+  1046→              </form>
+  1047→
+  1048→              <button onClick={() => setActiveTab("beranda")}
+  1049→                className="mt-6 mx-auto flex items-center gap-1.5 text-sm text-gray-500 hover:text-wa-green transition-colors">
+  1050→                <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Kembali ke Beranda
+  1051→              </button>
+  1052→            </div>
+  1053→          </section>
+  1054→        )}
+  1055→
+  1056→        {/* ═══════════════════════════════
+  1057→            DASHBOARD TAB
+  1058→            ═══════════════════════════════ */}
+  1059→        {activeTab === "dashboard" && (
+  1060→          <section className="py-12 md:py-20">
+  1061→            <div className="max-w-6xl mx-auto px-4">
+  1062→              {/* Header */}
+  1063→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 animate-fade-in-up">
+  1064→                <div>
+  1065→                  <h2 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h2>
+  1066→                  <p className="text-gray-400 text-sm mt-1">
+  1067→                    {user ? `Halo, ${user.name || user.email}` : "Kelola semua pendaftaran bot WhatsApp."}
+  1068→                  </p>
+  1069→                </div>
+  1070→                <div className="flex items-center gap-2">
+  1071→                  <button onClick={() => setShowAnalytics(!showAnalytics)}
+  1072→                    className={`btn-outline px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-2 ${showAnalytics ? "border-wa-green/30 text-wa-green bg-wa-green/5" : "border-dark-border-hover text-white"}`}>
+  1073→                    <Activity className="w-3.5 h-3.5" /> Analitik
+  1074→                  </button>
+  1075→                  <button onClick={exportCSV}
+  1076→                    className="btn-outline px-4 py-2.5 rounded-xl border border-dark-border-hover text-white text-xs font-medium flex items-center gap-2">
+  1077→                    <Download className="w-3.5 h-3.5" /> Export CSV
+  1078→                  </button>
+  1079→                  <button onClick={() => scrollToSection("daftar")}
+  1080→                    className="btn-primary px-4 py-2.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-xs flex items-center gap-2">
+  1081→                    <Send className="w-3.5 h-3.5" /> Daftar Bot
+  1082→                  </button>
+  1083→                </div>
+  1084→              </div>
+  1085→
+  1086→              {/* Analytics Panel */}
+  1087→              {showAnalytics && stats && (
+  1088→                <div className="mb-8 animate-fade-in-up grid sm:grid-cols-2 gap-4">
+  1089→                  {/* By Type Chart */}
+  1090→                  <div className="rounded-2xl border border-dark-border bg-dark-card p-5">
+  1091→                    <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2 mb-4">
+  1092→                      <BarChart3 className="w-4 h-4 text-wa-green" /> Distribusi Jenis Bot
+  1093→                    </h4>
+  1094→                    <div className="space-y-3">
+  1095→                      {Object.entries(stats.byType).map(([type, count]) => {
+  1096→                        const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
+  1097→                        const label = BOT_TYPES.find((t) => t.value === type)?.label || type;
+  1098→                        return (
+  1099→                          <div key={type}>
+  1100→                            <div className="flex justify-between text-xs mb-1">
+  1101→                              <span className="text-gray-400">{label}</span>
+  1102→                              <span className="text-gray-300 font-medium">{count} ({pct.toFixed(0)}%)</span>
+  1103→                            </div>
+  1104→                            <div className="h-2 bg-dark-bg rounded-full overflow-hidden">
+  1105→                              <div className="h-full bg-gradient-to-r from-wa-green-dark to-wa-green rounded-full transition-all duration-700"
+  1106→                                style={{ width: `${pct}%` }} />
+  1107→                            </div>
+  1108→                          </div>
+  1109→                        );
+  1110→                      })}
+  1111→                      {Object.keys(stats.byType).length === 0 && (
+  1112→                        <p className="text-gray-600 text-xs text-center py-4">Belum ada data</p>
+  1113→                      )}
+  1114→                    </div>
+  1115→                  </div>
+  1116→
+  1117→                  {/* Status Distribution */}
+  1118→                  <div className="rounded-2xl border border-dark-border bg-dark-card p-5">
+  1119→                    <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2 mb-4">
+  1120→                      <TrendingUp className="w-4 h-4 text-wa-green" /> Ringkasan Status
+  1121→                    </h4>
+  1122→                    <div className="grid grid-cols-3 gap-3 mb-6">
+  1123→                      <div className="text-center p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
+  1124→                        <div className="text-2xl font-bold text-yellow-400">{stats.pending}</div>
+  1125→                        <div className="text-[10px] text-yellow-400/60 mt-0.5">Menunggu</div>
+  1126→                      </div>
+  1127→                      <div className="text-center p-3 rounded-xl bg-green-500/5 border border-green-500/10">
+  1128→                        <div className="text-2xl font-bold text-green-400">{stats.approved}</div>
+  1129→                        <div className="text-[10px] text-green-400/60 mt-0.5">Disetujui</div>
+  1130→                      </div>
+  1131→                      <div className="text-center p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+  1132→                        <div className="text-2xl font-bold text-red-400">{stats.rejected}</div>
+  1133→                        <div className="text-[10px] text-red-400/60 mt-0.5">Ditolak</div>
+  1134→                      </div>
+  1135→                    </div>
+  1136→
+  1137→                    {/* Approval Rate */}
+  1138→                    <div className="rounded-xl bg-[#0d0d0d] border border-dark-border p-4">
+  1139→                      <div className="flex items-center justify-between mb-2">
+  1140→                        <span className="text-xs text-gray-400">Approval Rate</span>
+  1141→                        <span className="text-sm font-bold text-wa-green">
+  1142→                          {stats.total > 0 ? ((stats.approved / stats.total) * 100).toFixed(0) : 0}%
+  1143→                        </span>
+  1144→                      </div>
+  1145→                      <div className="h-3 bg-dark-bg rounded-full overflow-hidden">
+  1146→                        <div className="h-full bg-gradient-to-r from-wa-green-dark to-wa-green rounded-full transition-all duration-700"
+  1147→                          style={{ width: `${stats.total > 0 ? (stats.approved / stats.total) * 100 : 0}%` }} />
+  1148→                      </div>
+  1149→                    </div>
+  1150→                  </div>
+  1151→                </div>
+  1152→              )}
+  1153→
+  1154→              {/* Stats Cards */}
+  1155→              <div className="grid grid-cols-3 gap-3 mb-6 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+  1156→                <div className="rounded-xl border border-dark-border bg-dark-card p-4 text-center">
+  1157→                  <div className="text-2xl font-bold text-white">{bots.length}</div>
+  1158→                  <div className="text-xs text-gray-500 mt-0.5">Total Bot</div>
+  1159→                </div>
+  1160→                <div className="rounded-xl border border-dark-border bg-dark-card p-4 text-center">
+  1161→                  <div className="text-2xl font-bold text-yellow-400">{bots.filter((b) => b.status === "pending").length}</div>
+  1162→                  <div className="text-xs text-gray-500 mt-0.5">Menunggu</div>
+  1163→                </div>
+  1164→                <div className="rounded-xl border border-dark-border bg-dark-card p-4 text-center">
+  1165→                  <div className="text-2xl font-bold text-wa-green">{bots.filter((b) => b.status === "approved").length}</div>
+  1166→                  <div className="text-xs text-gray-500 mt-0.5">Disetujui</div>
+  1167→                </div>
+  1168→              </div>
+  1169→
+  1170→              {/* Search & Filter */}
+  1171→              <div className="flex flex-col sm:flex-row gap-3 mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+  1172→                <div className="relative flex-1">
+  1173→                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+  1174→                  <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+  1175→                    placeholder="Cari nama atau nomor WhatsApp..."
+  1176→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1177→                </div>
+  1178→                <div className="relative">
+  1179→                  <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+  1180→                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+  1181→                    className="input-glow bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-8 py-2.5 text-sm text-white appearance-none cursor-pointer transition-all">
+  1182→                    <option value="all">Semua Status</option>
+  1183→                    <option value="pending">Menunggu</option>
+  1184→                    <option value="approved">Disetujui</option>
+  1185→                    <option value="rejected">Ditolak</option>
+  1186→                  </select>
+  1187→                </div>
+  1188→              </div>
+  1189→
+  1190→              {/* Table */}
+  1191→              <div className="animate-fade-in-up rounded-2xl border border-dark-border bg-dark-card overflow-hidden" style={{ animationDelay: "0.2s" }}>
+  1192→                <div className="overflow-x-auto">
+  1193→                  <table className="w-full text-sm">
+  1194→                    <thead>
+  1195→                      <tr className="border-b border-dark-border">
+  1196→                        <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+  1197→                        <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">WhatsApp</th>
+  1198→                        <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Jenis</th>
+  1199→                        <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+  1200→                        <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Webhook</th>
+  1201→                        <th className="text-right px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+  1202→                      </tr>
+  1203→                    </thead>
+  1204→                    <tbody>
+  1205→                      {getFilteredBots().length === 0 ? (
+  1206→                        <tr>
+  1207→                          <td colSpan={6} className="px-5 py-16 text-center">
+  1208→                            <div className="flex flex-col items-center gap-3">
+  1209→                              <div className="w-12 h-12 rounded-2xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center">
+  1210→                                <Bot className="w-6 h-6 text-wa-green/40" />
+  1211→                              </div>
+  1212→                              <p className="text-gray-500 text-sm">
+  1213→                                {searchQuery || filterStatus !== "all" ? "Tidak ada bot yang cocok dengan filter." : "Belum ada pendaftaran bot."}
+  1214→                              </p>
+  1215→                              <button onClick={() => scrollToSection("daftar")} className="text-wa-green text-sm font-medium hover:underline flex items-center gap-1">
+  1216→                                Daftarkan yang pertama <ArrowRight className="w-3 h-3" />
+  1217→                              </button>
+  1218→                            </div>
+  1219→                          </td>
+  1220→                        </tr>
+  1221→                      ) : (
+  1222→                        getFilteredBots().map((bot) => (
+  1223→                          <tr key={bot.id} className="table-row-hover border-b border-dark-border last:border-0">
+  1224→                            <td className="px-5 py-4">
+  1225→                              <button onClick={() => setSelectedBot(bot)} className="text-left group">
+  1226→                                <div className="font-medium text-white group-hover:text-wa-green transition-colors">{bot.name}</div>
+  1227→                                <div className="text-xs text-gray-500 mt-0.5 md:hidden">{bot.whatsappNumber}</div>
+  1228→                              </button>
+  1229→                            </td>
+  1230→                            <td className="px-5 py-4 text-gray-400 hidden md:table-cell">{bot.whatsappNumber}</td>
+  1231→                            <td className="px-5 py-4 hidden lg:table-cell">
+  1232→                              <span className="text-gray-400 text-xs">{BOT_TYPES.find((t) => t.value === bot.botType)?.label || bot.botType}</span>
+  1233→                            </td>
+  1234→                            <td className="px-5 py-4">
+  1235→                              <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_MAP[bot.status]?.class || "status-pending"}`}>
+  1236→                                {STATUS_MAP[bot.status]?.label || bot.status}
+  1237→                              </span>
+  1238→                            </td>
+  1239→                            <td className="px-5 py-4 hidden xl:table-cell">
+  1240→                              {bot.webhookUrl ? (
+  1241→                                <button onClick={() => copyWebhook(bot.webhookUrl!)} className="text-wa-green text-xs hover:underline flex items-center gap-1">
+  1242→                                  <Copy className="w-3 h-3" /> Salin
+  1243→                                </button>
+  1244→                              ) : (
+  1245→                                <span className="text-gray-600 text-xs">-</span>
+  1246→                              )}
+  1247→                            </td>
+  1248→                            <td className="px-5 py-4">
+  1249→                              <div className="flex items-center justify-end gap-1">
+  1250→                                <button onClick={() => setSelectedBot(bot)} className="p-1.5 rounded-lg hover:bg-wa-green/10 text-gray-400 hover:text-wa-green transition-colors" title="Detail">
+  1251→                                  <Eye className="w-4 h-4" />
+  1252→                                </button>
+  1253→                                <button onClick={() => openConfig(bot)} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors" title="Konfigurasi">
+  1254→                                  <Settings className="w-4 h-4" />
+  1255→                                </button>
+  1256→                                <button onClick={() => deleteBot(bot.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors" title="Hapus">
+  1257→                                  <Trash2 className="w-4 h-4" />
+  1258→                                </button>
+  1259→                              </div>
+  1260→                            </td>
+  1261→                          </tr>
+  1262→                        ))
+  1263→                      )}
+  1264→                    </tbody>
+  1265→                  </table>
+  1266→                </div>
+  1267→              </div>
+  1268→
+  1269→              <button onClick={() => setActiveTab("beranda")}
+  1270→                className="mt-6 flex items-center gap-1.5 text-sm text-gray-500 hover:text-wa-green transition-colors">
+  1271→                <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Kembali ke Beranda
+  1272→              </button>
+  1273→            </div>
+  1274→          </section>
+  1275→        )}
+  1276→      </main>
+  1277→    </div>
+  1278→  );
+  1279→}

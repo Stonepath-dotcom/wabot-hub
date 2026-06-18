@@ -2,25 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { v4 as uuidv4 } from "uuid";
 
-// Helper: ensure tables exist (auto-init on first use)
-async function ensureTables() {
-  if (!supabaseAdmin) return false;
-  const { error } = await supabaseAdmin.from("bot_registrations").select("id").limit(1);
-  if (error && error.code === "42P01") {
-    // Table doesn't exist - try to auto-init
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace("supabase.co", "vercel.app")}/api/init-db`,
-        { signal: AbortSignal.timeout(15000) }
-      );
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-}
-
 export async function POST(req: NextRequest) {
   try {
     if (!supabaseAdmin) {
