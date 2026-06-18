@@ -142,6 +142,34 @@ export default function Home() {
           </div>
         </section>
 
+        {/* faq */}
+        <section className="border-t border-white/[0.06] py-20">
+          <div className="max-w-xl mx-auto px-5">
+            <p className="text-xs text-white/30 text-center uppercase tracking-widest mb-12">FAQ</p>
+            <div className="space-y-2">
+              {[
+                { q: 'Format file apa aja yang didukung?', a: 'JPG, PNG, WebP, HEIC, dan PDF. Kalau filenya gambar, otomatis dikonversi ke JPEG sebelum masuk PDF.' },
+                { q: 'File saya aman?', a: 'Semua proses berjalan di browser. File gak pernah dikirim ke server — langsung diproses di device kamu.' },
+                { q: 'Ada batas ukuran file?', a: 'Gak ada batas dari sisi aplikasi. Tapi browser biasanya bisa handle file sampai ratusan MB tanpa masalah.' },
+                { q: 'Bisa edit urutan dokumen?', a: 'Bisa. Setiap slot ada tombol panah atas/bawah buat pindah posisi. Dokumen yang sudah diurutkan akan mengikuti urutan itu di PDF.' },
+                { q: 'Ini gratis?', a: 'Ya, sepenuhnya gratis. Gak perlu daftar, gak perlu login, gak ada iklan.' },
+              ].map((item) => (
+                <details key={item.q} className="group bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
+                  <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="text-sm text-white/80 pr-4">{item.q}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 shrink-0 transition-transform group-open:rotate-180">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </summary>
+                  <div className="px-5 pb-4">
+                    <p className="text-xs text-white/40 leading-relaxed">{item.a}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* privacy */}
         <section className="border-t border-white/[0.06] py-16">
           <div className="max-w-5xl mx-auto px-5">
