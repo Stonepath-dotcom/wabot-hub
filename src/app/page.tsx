@@ -108,6 +108,16 @@ export default function Home() {
   const [cfgAutoReply, setCfgAutoReply] = useState("");
   const [cfgHours, setCfgHours] = useState("00:00 - 23:59");
 
+  /* WA verification state */
+  const [waStep, setWaStep] = useState<"idle" | "verifying" | "verified">("idle");
+  const [waCode, setWaCode] = useState("");
+  const [waQrDataUrl, setWaQrDataUrl] = useState("");
+  const [waCodeInput, setWaCodeInput] = useState("");
+  const [waPhoneInput, setWaPhoneInput] = useState("");
+  const [waVerifying, setWaVerifying] = useState(false);
+  const [waExpiry, setWaExpiry] = useState<number>(0);
+  const waTimerRef = useRef<ReturnType<typeof setInterval>>(null);
+
   const formRef = useRef<HTMLDivElement>(null);
 
   /* ─── Runtime Supabase client (bypasses build-time env issue) ─── */
@@ -162,6 +172,14 @@ export default function Home() {
   useEffect(() => {
     if (activeTab === "dashboard") fetchBots();
   }, [activeTab, fetchBots]);
+
+  /* Timer tick to force re-render for countdown display */
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (waStep !== "verifying") return;
+    const iv = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(iv);
+  }, [waStep]);
 
   useScrollReveal(activeTab === "beranda");
 
@@ -249,13 +267,75 @@ export default function Home() {
     setAuthLoading(false);
   }
 
+  /* ─── Generate WA verification code ─── */
+  async function startWaVerification(phone: string) {
+    const cleanPhone = phone.replace(/[\s\-()]/g, "");
+    const phoneRegex = /^(\+62|62|0)[0-9]{8,13}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      toast.error("Format nomor WhatsApp tidak valid (contoh: +6281234567890)");
+      return;
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    setWaCode(code);
+    setWaCodeInput("");
+    setWaPhoneInput(cleanPhone);
+    setWaExpiry(Date.now() + 5 * 60 * 1000); // 5 min expiry
+    setWaVerifying(true);
+
+    // Generate QR code with wa.me link
+    const waMessage = encodeURIComponent(`Verifikasi WaBot Hub\nKode: ${code}`);
+    const waLink = `https://wa.me/${cleanPhone.replace(/^0/, "62").replace(/^\+/, "")}?text=${waMessage}`;
+    try {
+      const QRCode = (await import("qrcode")).default;
+      const dataUrl = await QRCode.toDataURL(waLink, {
+        width: 220,
+        margin: 1,
+        color: { dark: "#25D366", light: "#0a0a0a" },
+      });
+      setWaQrDataUrl(dataUrl);
+    } catch {
+      setWaQrDataUrl("");
+    }
+
+    setWaStep("verifying");
+
+    // Auto-expire timer
+    if (waTimerRef.current) clearInterval(waTimerRef.current);
+    waTimerRef.current = setInterval(() => {
+      setWaExpiry((prev) => {
+        if (prev - Date.now() <= 0) {
+          setWaStep("idle");
+          setWaVerifying(false);
+          if (waTimerRef.current) clearInterval(waTimerRef.current);
+          return 0;
+        }
+        return prev;
+      });
+    }, 1000);
+  }
+
+  function verifyWaCode() {
+    if (waCodeInput.trim() === waCode) {
+      setWaStep("verified");
+      setWaVerifying(false);
+      if (waTimerRef.current) clearInterval(waTimerRef.current);
+      toast.success("Nomor WhatsApp berhasil diverifikasi!");
+    } else {
+      toast.error("Kode verifikasi salah. Coba lagi.");
+    }
+  }
+
   /* ─── Form submit ─── */
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (waStep !== "verified") {
+      toast.error("Verifikasi nomor WhatsApp terlebih dahulu");
+      return;
+    }
     const fd = new FormData(e.currentTarget);
     const data = {
       name: (fd.get("name") as string)?.trim(),
-      whatsappNumber: (fd.get("whatsappNumber") as string)?.trim(),
+      whatsappNumber: waPhoneInput,
       email: (fd.get("email") as string)?.trim() || null,
       botType: (fd.get("botType") as string) || "customer-service",
       description: (fd.get("description") as string)?.trim() || null,
@@ -279,6 +359,10 @@ export default function Home() {
       const json = await res.json();
       toast.success("Pendaftaran berhasil dikirim!");
       e.currentTarget.reset();
+      setWaStep("idle");
+      setWaCode("");
+      setWaPhoneInput("");
+      setWaQrDataUrl("");
       setActiveTab("dashboard");
     } catch (err) {
       console.error("Register error:", err);
@@ -985,36 +1069,144 @@ export default function Home() {
         {activeTab === "daftar" && (
           <section ref={formRef} className="py-12 md:py-20">
             <div className="max-w-xl mx-auto px-4">
+
+              {/* ── LOGIN GATE ── */}
+              {!user ? (
+                <div className="animate-fade-in-up text-center py-16">
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-wa-green/10 border border-wa-green/20 flex items-center justify-center">
+                    <LogIn className="w-8 h-8 text-wa-green" />
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Login Diperlukan</h2>
+                  <p className="text-gray-400 text-sm max-w-sm mx-auto mb-8">
+                    Anda harus login terlebih dahulu sebelum mendaftarkan bot WhatsApp. Ini untuk keamanan dan pengelolaan bot Anda.
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    <button onClick={() => setAuthModal("login")}
+                      className="btn-primary px-6 py-3 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center gap-2 animate-green-glow">
+                      <LogIn className="w-4 h-4" /> Masuk
+                    </button>
+                    <button onClick={() => setAuthModal("register")}
+                      className="btn-outline px-6 py-3 rounded-xl border border-dark-border-hover text-white font-medium text-sm flex items-center gap-2 hover:border-wa-green/30 hover:text-wa-green">
+                      <UserPlus className="w-4 h-4" /> Daftar Akun Baru
+                    </button>
+                  </div>
+                  <button onClick={() => setActiveTab("beranda")}
+                    className="mt-8 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-wa-green transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Kembali ke Beranda
+                  </button>
+                </div>
+              ) : (
+              <>
+              {/* ── REGISTER FORM (logged in) ── */}
               <div className="text-center mb-10 animate-fade-in-up">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-wa-green/20 bg-wa-green/5 text-wa-green text-xs font-medium mb-4">
                   <Bot className="w-3 h-3" /> Formulir Pendaftaran
                 </div>
                 <h2 className="text-3xl font-bold text-white">Daftarkan Bot Anda</h2>
                 <p className="text-gray-400 mt-2 text-sm">
-                  {user ? `Login sebagai ${user.name || user.email}` : "Daftar atau login untuk mengelola bot Anda"}
+                  Login sebagai <span className="text-wa-green font-medium">{user.name || user.email}</span>
                 </p>
-                {!user && (
-                  <button onClick={() => setAuthModal("login")} className="mt-2 text-wa-green text-sm hover:underline">
-                    Masuk terlebih dahulu →
-                  </button>
-                )}
               </div>
 
               <form onSubmit={handleSubmit}
                 className="animate-fade-in-up rounded-2xl border border-dark-border bg-dark-card p-6 md:p-8 space-y-5" style={{ animationDelay: "0.15s" }}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nama Lengkap <span className="text-red-400">*</span></label>
-                  <input name="name" type="text" required placeholder="Masukkan nama lengkap Anda"
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nama Bot <span className="text-red-400">*</span></label>
+                  <input name="name" type="text" required placeholder="Nama bot Anda (contoh: CS Toko Jaya)"
                     className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
                 </div>
+
+                {/* ── WHATSAPP VERIFICATION ── */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Nomor WhatsApp <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                    <input name="whatsappNumber" type="tel" required placeholder="+62 812-3456-7890"
-                      className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
-                  </div>
+                  {waStep === "idle" && (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <input id="wa-phone-input" type="tel" placeholder="+62 812-3456-7890"
+                          value={waPhoneInput}
+                          onChange={(e) => setWaPhoneInput(e.target.value)}
+                          className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+                      </div>
+                      <button type="button" onClick={() => startWaVerification(waPhoneInput)} disabled={waVerifying || !waPhoneInput}
+                        className="w-full py-2.5 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        <MessageSquare className="w-4 h-4" /> Verifikasi via WhatsApp
+                      </button>
+                    </div>
+                  )}
+
+                  {waStep === "verifying" && (
+                    <div className="space-y-4 p-4 rounded-xl border border-wa-green/20 bg-wa-green/5">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-300 mb-1">Scan QR Code atau klik tombol di bawah</p>
+                        <p className="text-xs text-gray-500">Buka WhatsApp, kirim pesan verifikasi ke nomor <span className="text-wa-green font-medium">{waPhoneInput}</span></p>
+                      </div>
+
+                      {/* QR Code */}
+                      {waQrDataUrl && (
+                        <div className="flex justify-center">
+                          <div className="p-3 rounded-xl bg-white">
+                            <img src={waQrDataUrl} alt="QR Code WhatsApp" className="w-52 h-52" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Timer */}
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">
+                          Kode berlaku {Math.max(0, Math.ceil((waExpiry - Date.now()) / 1000))} detik lagi
+                        </p>
+                      </div>
+
+                      {/* Open WhatsApp button */}
+                      {(() => {
+                        const cleanForLink = waPhoneInput.replace(/^0/, "62").replace(/^\+/, "");
+                        const waMsg = encodeURIComponent(`Verifikasi WaBot Hub\nKode: ${waCode}`);
+                        return (
+                          <a href={`https://wa.me/${cleanForLink}?text=${waMsg}`} target="_blank" rel="noopener"
+                            className="w-full py-2.5 rounded-xl bg-[#25D366] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-all">
+                            <MessageSquare className="w-4 h-4" /> Buka WhatsApp
+                          </a>
+                        );
+                      })()}
+
+                      {/* Code input */}
+                      <div className="space-y-2">
+                        <label className="block text-xs text-gray-400 text-center">Masukkan 6-digit kode verifikasi</label>
+                        <div className="flex gap-2">
+                          <input type="text" maxLength={6} placeholder="000000"
+                            value={waCodeInput}
+                            onChange={(e) => setWaCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            className="input-glow flex-1 bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-2.5 text-center text-lg tracking-[0.3em] font-mono text-white placeholder:text-gray-600 transition-all" />
+                          <button type="button" onClick={verifyWaCode} disabled={waCodeInput.length !== 6}
+                            className="px-5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+                            Verifikasi
+                          </button>
+                        </div>
+                      </div>
+
+                      <button type="button" onClick={() => { setWaStep("idle"); setWaVerifying(false); if (waTimerRef.current) clearInterval(waTimerRef.current); }}
+                        className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors py-1">
+                        Batal & pakai nomor lain
+                      </button>
+                    </div>
+                  )}
+
+                  {waStep === "verified" && (
+                    <div className="flex items-center gap-3 p-4 rounded-xl border border-green-500/20 bg-green-500/5">
+                      <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-5 h-5 text-green-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-green-300 text-sm font-medium">Terverifikasi</p>
+                        <p className="text-gray-500 text-xs truncate">{waPhoneInput}</p>
+                      </div>
+                      <button type="button" onClick={() => { setWaStep("idle"); setWaCode(""); setWaPhoneInput(""); setWaQrDataUrl(""); }}
+                        className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Ubah</button>
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Email <span className="text-gray-600">(opsional)</span></label>
                   <div className="relative">
@@ -1035,9 +1227,9 @@ export default function Home() {
                   <textarea name="description" rows={3} placeholder="Jelaskan fungsi dan tujuan bot Anda..."
                     className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none transition-all" />
                 </div>
-                <button type="submit" disabled={loading}
+                <button type="submit" disabled={loading || waStep !== "verified"}
                   className="btn-primary w-full py-3.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed animate-green-glow">
-                  {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Mendaftarkan...</> : <><Send className="w-4 h-4" /> Daftarkan Bot</>}
+                  {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Mendaftarkan...</> : waStep !== "verified" ? <><Shield className="w-4 h-4" /> Verifikasi WhatsApp Terlebih Dahulu</> : <><Send className="w-4 h-4" /> Daftarkan Bot</>}
                 </button>
                 <p className="text-center text-xs text-gray-600">Dengan mendaftar, Anda menyetujui Syarat & Ketentuan kami.</p>
               </form>
@@ -1046,6 +1238,8 @@ export default function Home() {
                 className="mt-6 mx-auto flex items-center gap-1.5 text-sm text-gray-500 hover:text-wa-green transition-colors">
                 <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Kembali ke Beranda
               </button>
+              </>
+              )}
             </div>
           </section>
         )}
