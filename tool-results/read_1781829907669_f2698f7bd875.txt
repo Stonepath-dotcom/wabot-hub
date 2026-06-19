@@ -1,0 +1,502 @@
+   780→                      className="btn-outline px-6 py-3 rounded-xl border border-dark-border-hover text-white font-medium text-sm flex items-center gap-2">
+   781→                      <BarChart3 className="w-4 h-4" /> Lihat Dashboard
+   782→                    </button>
+   783→                  </div>
+   784→                </div>
+   785→
+   786→                <div className="animate-fade-in-right hidden md:flex justify-center">
+   787→                  <div className="animate-float w-full max-w-sm">
+   788→                    <div className="rounded-2xl border border-dark-border-hover bg-dark-card overflow-hidden shadow-2xl shadow-black/40">
+   789→                      <div className="px-4 py-3 bg-wa-green-dark flex items-center gap-3">
+   790→                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><Bot className="w-4 h-4 text-white" /></div>
+   791→                        <div>
+   792→                          <div className="text-white text-sm font-medium">WaBot Assistant</div>
+   793→                          <div className="text-white/60 text-xs flex items-center gap-1">
+   794→                            <span className="w-1.5 h-1.5 rounded-full bg-green-300" /> Online
+   795→                          </div>
+   796→                        </div>
+   797→                      </div>
+   798→                      <div className="p-4 space-y-3 min-h-[260px] bg-[#0d1117]">
+   799→                        <div className="flex gap-2 animate-chat-bounce" style={{ animationDelay: "0.2s" }}>
+   800→                          <div className="w-6 h-6 rounded-full bg-wa-green/20 flex items-center justify-center shrink-0 mt-1"><Bot className="w-3 h-3 text-wa-green" /></div>
+   801→                          <div className="bg-[#1a2332] rounded-2xl rounded-tl-sm px-3.5 py-2.5 max-w-[75%]">
+   802→                            <p className="text-sm text-gray-200">Halo! Saya bot WhatsApp Anda. Ada yang bisa saya bantu?</p>
+   803→                            <span className="text-[10px] text-gray-500 mt-1 block">10:42</span>
+   804→                          </div>
+   805→                        </div>
+   806→                        <div className="flex justify-end animate-chat-bounce" style={{ animationDelay: "0.8s" }}>
+   807→                          <div className="bg-wa-green-dark rounded-2xl rounded-tr-sm px-3.5 py-2.5 max-w-[75%]">
+   808→                            <p className="text-sm text-white">Saya ingin cek status pesanan saya</p>
+   809→                            <span className="text-[10px] text-white/50 mt-1 block text-right">10:42</span>
+   810→                          </div>
+   811→                        </div>
+   812→                        <div className="flex gap-2 animate-chat-bounce" style={{ animationDelay: "1.5s" }}>
+   813→                          <div className="w-6 h-6 rounded-full bg-wa-green/20 flex items-center justify-center shrink-0 mt-1"><Bot className="w-3 h-3 text-wa-green" /></div>
+   814→                          <div className="bg-[#1a2332] rounded-2xl rounded-tl-sm px-4 py-3">
+   815→                            <div className="flex gap-1.5">
+   816→                              <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+   817→                            </div>
+   818→                          </div>
+   819→                        </div>
+   820→                      </div>
+   821→                      <div className="px-4 py-3 bg-[#0d1117] border-t border-dark-border flex items-center gap-2">
+   822→                        <div className="flex-1 bg-[#1a2332] rounded-full px-4 py-2 text-xs text-gray-500">Ketik pesan...</div>
+   823→                        <div className="w-8 h-8 rounded-full bg-wa-green flex items-center justify-center"><Send className="w-3.5 h-3.5 text-white" /></div>
+   824→                      </div>
+   825→                    </div>
+   826→                  </div>
+   827→                </div>
+   828→              </div>
+   829→            </section>
+   830→
+   831→            {/* STATS */}
+   832→            <section className="border-y border-dark-border">
+   833→              <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+   834→                {[
+   835→                  { value: "500+", label: "Bot Terdaftar", icon: Bot },
+   836→                  { value: "99.9%", label: "Uptime Server", icon: Shield },
+   837→                  { value: "24/7", label: "Support Aktif", icon: Clock },
+   838→                  { value: "1.2M+", label: "Pesan / Bulan", icon: MessageSquare },
+   839→                ].map((stat, i) => (
+   840→                  <div key={stat.label} className="scroll-fade flex items-center gap-3 justify-center md:justify-start" style={{ transitionDelay: `${i * 100}ms` }}>
+   841→                    <div className="stat-hover w-10 h-10 rounded-xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center">
+   842→                      <stat.icon className="w-5 h-5 text-wa-green/70" />
+   843→                    </div>
+   844→                    <div>
+   845→                      <div className="text-xl font-bold text-white">{stat.value}</div>
+   846→                      <div className="text-xs text-gray-500">{stat.label}</div>
+   847→                    </div>
+   848→                  </div>
+   849→                ))}
+   850→              </div>
+   851→            </section>
+   852→
+   853→            {/* FEATURES */}
+   854→            <section className="py-20 md:py-24">
+   855→              <div className="max-w-6xl mx-auto px-4">
+   856→                <div className="text-center mb-14 scroll-fade">
+   857→                  <h2 className="text-3xl md:text-4xl font-bold text-white">
+   858→                    Kenapa Pilih <span className="text-wa-green">WaBot Hub</span>?
+   859→                  </h2>
+   860→                  <p className="text-gray-400 mt-3 max-w-lg mx-auto">Platform terlengkap untuk mengelola bot WhatsApp bisnis Anda.</p>
+   861→                </div>
+   862→                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   863→                  {[
+   864→                    { icon: MessageSquare, title: "Auto Reply Cerdas", desc: "Balas pesan masuk secara otomatis dengan template yang bisa dikustomisasi sesuai kebutuhan bisnis Anda." },
+   865→                    { icon: Users, title: "Multi-User Management", desc: "Kelola banyak bot dalam satu dashboard. Cocok untuk agensi atau bisnis dengan beberapa cabang." },
+   866→                    { icon: BarChart3, title: "Analitik Real-time", desc: "Pantau performa bot Anda dengan dashboard analitik yang menampilkan statistik pesan dan respons." },
+   867→                    { icon: Zap, title: "Setup Instan", desc: "Daftar dan konfigurasi bot dalam hitungan menit. Tanpa instalasi rumit, langsung siap pakai." },
+   868→                    { icon: Shield, title: "Keamanan Terjamin", desc: "Enkripsi end-to-end dan autentikasi two-factor untuk melindungi data bisnis Anda." },
+   869→                    { icon: Globe, title: "API & Webhook", desc: "Integrasikan bot WhatsApp Anda dengan sistem CRM, e-commerce, atau tools lainnya via REST API dan webhook." },
+   870→                  ].map((feat, i) => (
+   871→                    <div key={feat.title} className="scroll-fade card-hover group rounded-2xl border border-dark-border bg-dark-card p-6" style={{ transitionDelay: `${i * 80}ms` }}>
+   872→                      <div className="w-11 h-11 rounded-xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center mb-4 group-hover:bg-wa-green/10 group-hover:border-wa-green/20 transition-all duration-300">
+   873→                        <feat.icon className="w-5 h-5 text-wa-green/70" />
+   874→                      </div>
+   875→                      <h3 className="text-white font-semibold mb-2">{feat.title}</h3>
+   876→                      <p className="text-gray-400 text-sm leading-relaxed">{feat.desc}</p>
+   877→                    </div>
+   878→                  ))}
+   879→                </div>
+   880→              </div>
+   881→            </section>
+   882→
+   883→            <div className="shimmer-divider max-w-6xl mx-auto" />
+   884→
+   885→            {/* HOW IT WORKS */}
+   886→            <section className="py-20 md:py-24">
+   887→              <div className="max-w-6xl mx-auto px-4">
+   888→                <div className="text-center mb-14 scroll-fade">
+   889→                  <h2 className="text-3xl md:text-4xl font-bold text-white">Cara Kerja</h2>
+   890→                  <p className="text-gray-400 mt-3 max-w-md mx-auto">Tiga langkah mudah untuk mulai menggunakan bot WhatsApp Anda.</p>
+   891→                </div>
+   892→                <div className="grid md:grid-cols-3 gap-8">
+   893→                  {[
+   894→                    { step: "01", icon: Send, title: "Daftarkan Bot", desc: "Isi formulir pendaftaran dengan informasi bot dan nomor WhatsApp bisnis Anda. Proses cepat tanpa biaya." },
+   895→                    { step: "02", icon: RefreshCw, title: "Konfigurasi", desc: "Atur pesan balasan otomatis, buat menu interaktif, dan sesuaikan perilaku bot sesuai kebutuhan." },
+   896→                    { step: "03", icon: CheckCircle2, title: "Bot Aktif!", desc: "Setelah disetujui, bot Anda langsung aktif dan mulai melayani pelanggan 24 jam non-stop." },
+   897→                  ].map((item, i) => (
+   898→                    <div key={item.step} className={`scroll-fade-${i === 0 ? "left" : i === 2 ? "right" : "scale"} relative`} style={{ transitionDelay: `${i * 120}ms` }}>
+   899→                      <div className="card-hover rounded-2xl border border-dark-border bg-dark-card p-6 text-center h-full">
+   900→                        <div className="text-5xl font-black text-wa-green/10 absolute top-4 right-6">{item.step}</div>
+   901→                        <div className="w-14 h-14 rounded-2xl bg-wa-green/5 border border-wa-green/10 flex items-center justify-center mx-auto mb-5">
+   902→                          <item.icon className="w-6 h-6 text-wa-green" />
+   903→                        </div>
+   904→                        <h3 className="text-white font-semibold text-lg mb-2">{item.title}</h3>
+   905→                        <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+   906→                      </div>
+   907→                    </div>
+   908→                  ))}
+   909→                </div>
+   910→              </div>
+   911→            </section>
+   912→
+   913→            {/* FAQ */}
+   914→            <section className="py-20 border-t border-dark-border">
+   915→              <div className="max-w-2xl mx-auto px-4">
+   916→                <div className="text-center mb-12 scroll-fade"><h2 className="text-3xl md:text-4xl font-bold text-white">Pertanyaan Umum</h2></div>
+   917→                <div className="space-y-3">
+   918→                  {[
+   919→                    { q: "Apakah pendaftaran bot gratis?", a: "Ya, pendaftaran bot di WaBot Hub sepenuhnya gratis. Anda hanya perlu mengisi formulir dan menunggu persetujuan dari tim kami." },
+   920→                    { q: "Berapa lama proses persetujuan?", a: "Proses review dan persetujuan biasanya memakan waktu 1x24 jam kerja. Untuk permintaan dengan volume tinggi, bisa memakan waktu hingga 3 hari kerja." },
+   921→                    { q: "Jenis bot apa saja yang didukung?", a: "Kami mendukung customer service otomatis, marketing & promo, transaksi & pembayaran, notifikasi & reminder, serta AI chatbot." },
+   922→                    { q: "Apakah data saya aman?", a: "Keamanan data adalah prioritas utama kami. Semua data dienkripsi dan disimpan di server yang aman. Kami tidak pernah membagikan informasi pribadi Anda." },
+   923→                    { q: "Bisa integrasi dengan sistem yang sudah ada?", a: "Ya! WaBot Hub menyediakan REST API dan Webhook yang bisa diintegrasikan dengan CRM, e-commerce, atau sistem internal perusahaan Anda." },
+   924→                  ].map((faq, i) => (
+   925→                    <details key={i} className="scroll-fade faq-hover group rounded-xl border border-dark-border bg-dark-card overflow-hidden" style={{ transitionDelay: `${i * 60}ms` }}>
+   926→                      <summary className="flex items-center justify-between cursor-pointer px-5 py-4 text-white font-medium text-sm list-none">
+   927→                        {faq.q}
+   928→                        <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform duration-300" />
+   929→                      </summary>
+   930→                      <div className="px-5 pb-4 text-gray-400 text-sm leading-relaxed border-t border-dark-border pt-3">{faq.a}</div>
+   931→                    </details>
+   932→                  ))}
+   933→                </div>
+   934→              </div>
+   935→            </section>
+   936→
+   937→            {/* CTA */}
+   938→            <section className="py-20">
+   939→              <div className="max-w-6xl mx-auto px-4">
+   940→                <div className="scroll-fade-scale relative rounded-3xl border border-wa-green/10 overflow-hidden">
+   941→                  <div className="absolute inset-0 bg-gradient-to-br from-wa-green-dark/20 via-dark-bg to-dark-bg" />
+   942→                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-wa-green/5 blur-[100px] animate-glow-pulse pointer-events-none" />
+   943→                  <div className="relative px-6 py-16 md:py-20 text-center">
+   944→                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Siap Membuat Bot WhatsApp Anda?</h2>
+   945→                    <p className="text-gray-400 max-w-md mx-auto mb-8">Bergabung dengan ratusan bisnis yang sudah menggunakan WaBot Hub untuk otomasi WhatsApp mereka.</p>
+   946→                    <button onClick={() => scrollToSection("daftar")}
+   947→                      className="btn-primary px-8 py-3.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm animate-green-glow inline-flex items-center gap-2">
+   948→                      Daftar Sekarang — Gratis <ArrowRight className="w-4 h-4" />
+   949→                    </button>
+   950→                  </div>
+   951→                </div>
+   952→              </div>
+   953→            </section>
+   954→
+   955→            {/* FOOTER */}
+   956→            <footer className="border-t border-dark-border bg-[#070707]">
+   957→              <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
+   958→                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+   959→                  <div className="sm:col-span-2 lg:col-span-1">
+   960→                    <div className="flex items-center gap-2 mb-4">
+   961→                      <div className="w-8 h-8 rounded-lg bg-wa-green/10 border border-wa-green/20 flex items-center justify-center"><Bot className="w-4 h-4 text-wa-green" /></div>
+   962→                      <span className="font-semibold text-white">WaBot Hub</span>
+   963→                    </div>
+   964→                    <p className="text-gray-500 text-sm leading-relaxed max-w-xs">Platform pendaftaran dan pengelolaan bot WhatsApp terpercaya untuk bisnis di Indonesia.</p>
+   965→                  </div>
+   966→                  <div>
+   967→                    <h4 className="text-white font-medium text-sm mb-4">Navigasi</h4>
+   968→                    <div className="space-y-2.5">
+   969→                      {[{ label: "Beranda", tab: "beranda" }, { label: "Daftar Bot", tab: "daftar" }, { label: "Dashboard", tab: "dashboard" }].map((link) => (
+   970→                        <button key={link.tab} onClick={() => scrollToSection(link.tab)} className="block text-gray-500 text-sm footer-link hover:text-wa-green">{link.label}</button>
+   971→                      ))}
+   972→                    </div>
+   973→                  </div>
+   974→                  <div>
+   975→                    <h4 className="text-white font-medium text-sm mb-4">Kontak</h4>
+   976→                    <div className="space-y-3">
+   977→                      <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-gray-500 text-sm footer-link hover:text-wa-green">
+   978→                        <Phone className="w-3.5 h-3.5" /> +62 812-3456-7890
+   979→                      </a>
+   980→                      <a href="mailto:support@wabothub.id" className="flex items-center gap-2.5 text-gray-500 text-sm footer-link hover:text-wa-green">
+   981→                        <Mail className="w-3.5 h-3.5" /> support@wabothub.id
+   982→                      </a>
+   983→                    </div>
+   984→                  </div>
+   985→                  <div>
+   986→                    <h4 className="text-white font-medium text-sm mb-4">Alamat</h4>
+   987→                    <div className="flex items-start gap-2.5 text-gray-500 text-sm leading-relaxed">
+   988→                      <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   989→                      <span>Jl. Teknologi No. 42, Gedung Inovasi Lantai 5,<br />Jakarta Selatan, DKI Jakarta 12345</span>
+   990→                    </div>
+   991→                  </div>
+   992→                </div>
+   993→                <div className="shimmer-divider my-8" />
+   994→                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
+   995→                  <span>&copy; 2026 WaBot Hub. Semua hak dilindungi.</span>
+   996→                  <div className="flex items-center gap-4">
+   997→                    <span className="footer-link cursor-pointer">Kebijakan Privasi</span>
+   998→                    <span className="footer-link cursor-pointer">Syarat & Ketentuan</span>
+   999→                  </div>
+  1000→                </div>
+  1001→              </div>
+  1002→            </footer>
+  1003→          </>
+  1004→        )}
+  1005→
+  1006→        {/* ═══════════════════════════════
+  1007→            DAFTAR TAB
+  1008→            ═══════════════════════════════ */}
+  1009→        {activeTab === "daftar" && (
+  1010→          <section ref={formRef} className="py-12 md:py-20">
+  1011→            <div className="max-w-xl mx-auto px-4">
+  1012→
+  1013→              {/* ── LOGIN GATE ── */}
+  1014→              {!user ? (
+  1015→                <div className="animate-fade-in-up text-center py-16">
+  1016→                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-wa-green/10 border border-wa-green/20 flex items-center justify-center">
+  1017→                    <LogIn className="w-8 h-8 text-wa-green" />
+  1018→                  </div>
+  1019→                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Login Diperlukan</h2>
+  1020→                  <p className="text-gray-400 text-sm max-w-sm mx-auto mb-8">
+  1021→                    Anda harus login terlebih dahulu sebelum mendaftarkan bot WhatsApp. Ini untuk keamanan dan pengelolaan bot Anda.
+  1022→                  </p>
+  1023→                  <div className="flex items-center justify-center gap-3">
+  1024→                    <button onClick={() => setAuthModal("login")}
+  1025→                      className="btn-primary px-6 py-3 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center gap-2 animate-green-glow">
+  1026→                      <LogIn className="w-4 h-4" /> Masuk
+  1027→                    </button>
+  1028→                    <button onClick={() => setAuthModal("register")}
+  1029→                      className="btn-outline px-6 py-3 rounded-xl border border-dark-border-hover text-white font-medium text-sm flex items-center gap-2 hover:border-wa-green/30 hover:text-wa-green">
+  1030→                      <UserPlus className="w-4 h-4" /> Daftar Akun Baru
+  1031→                    </button>
+  1032→                  </div>
+  1033→                  <button onClick={() => setActiveTab("beranda")}
+  1034→                    className="mt-8 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-wa-green transition-colors">
+  1035→                    <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Kembali ke Beranda
+  1036→                  </button>
+  1037→                </div>
+  1038→              ) : (
+  1039→              <>
+  1040→              {/* ── REGISTER FORM (logged in) ── */}
+  1041→              <div className="text-center mb-10 animate-fade-in-up">
+  1042→                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-wa-green/20 bg-wa-green/5 text-wa-green text-xs font-medium mb-4">
+  1043→                  <Bot className="w-3 h-3" /> Formulir Pendaftaran
+  1044→                </div>
+  1045→                <h2 className="text-3xl font-bold text-white">Daftarkan Bot Anda</h2>
+  1046→                <p className="text-gray-400 mt-2 text-sm">
+  1047→                  Login sebagai <span className="text-wa-green font-medium">{user.name || user.email}</span>
+  1048→                </p>
+  1049→              </div>
+  1050→
+  1051→              <form onSubmit={handleSubmit}
+  1052→                className="animate-fade-in-up rounded-2xl border border-dark-border bg-dark-card p-6 md:p-8 space-y-5" style={{ animationDelay: "0.15s" }}>
+  1053→                <div>
+  1054→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nama Bot <span className="text-red-400">*</span></label>
+  1055→                  <input name="name" type="text" required placeholder="Nama bot Anda (contoh: CS Toko Jaya)"
+  1056→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1057→                </div>
+  1058→
+  1059→                <div>
+  1060→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nomor WhatsApp Bot <span className="text-red-400">*</span></label>
+  1061→                  <div className="relative">
+  1062→                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+  1063→                    <input name="whatsappNumber" type="tel" required placeholder="+62 812-3456-7890"
+  1064→                      className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1065→                  </div>
+  1066→                  <p className="text-xs text-gray-600 mt-1">Nomor WA yang digunakan bot untuk menerima &amp; mengirim pesan</p>
+  1067→                </div>
+  1068→
+  1069→                {/* ── API PROVIDER ── */}
+  1070→                <div>
+  1071→                  <label className="block text-sm font-medium text-gray-300 mb-2">Provider API WhatsApp <span className="text-red-400">*</span></label>
+  1072→                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+  1073→                    {API_PROVIDERS.map((p) => (
+  1074→                      <button key={p.value} type="button"
+  1075→                        onClick={() => { setSelectedProvider(p.value); setApiConnected(false); }}
+  1076→                        className={`p-3 rounded-xl border text-left transition-all ${
+  1077→                          selectedProvider === p.value
+  1078→                            ? "border-wa-green/50 bg-wa-green/10 ring-1 ring-wa-green/30"
+  1079→                            : "border-dark-border bg-[#0d0d0d] hover:border-dark-border-hover"
+  1080→                        }`}>
+  1081→                        <p className={`text-xs font-semibold ${selectedProvider === p.value ? "text-wa-green" : "text-white"}`}>{p.label}</p>
+  1082→                        <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{p.desc}</p>
+  1083→                      </button>
+  1084→                    ))}
+  1085→                  </div>
+  1086→                </div>
+  1087→
+  1088→                {/* ── API KEY / CREDENTIALS ── */}
+  1089→                {selectedProvider && (
+  1090→                  <div className="space-y-4 p-4 rounded-xl border border-dark-border bg-[#0d0d0d] animate-fade-in-up">
+  1091→                    <div className="flex items-center gap-2 mb-1">
+  1092→                      <Key className="w-4 h-4 text-wa-green" />
+  1093→                      <h4 className="text-sm font-medium text-white">Kredensial API</h4>
+  1094→                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-wa-green/10 text-wa-green font-medium">
+  1095→                        {API_PROVIDERS.find((p) => p.value === selectedProvider)?.label}
+  1096→                      </span>
+  1097→                    </div>
+  1098→
+  1099→                    <div>
+  1100→                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+  1101→                        {selectedProvider === "whatsapp-cloud" ? "Access Token / Phone Number ID" :
+  1102→                         selectedProvider === "baileys" ? "Session String / Connection Key" :
+  1103→                         "API Key / Token"} <span className="text-red-400">*</span>
+  1104→                      </label>
+  1105→                      <div className="relative">
+  1106→                        <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+  1107→                        <input name="apiKey" type="password" required
+  1108→                          placeholder={
+  1109→                            selectedProvider === "whatsapp-cloud" ? "EAAxxxxxx..." :
+  1110→                            selectedProvider === "baileys" ? "1ABCDef2@session..." :
+  1111→                            "Masukkan API key Anda"
+  1112→                          }
+  1113→                          onChange={() => setApiConnected(false)}
+  1114→                          className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+  1115→                        <button type="button" onClick={(e) => { const inp = (e.currentTarget.previousElementSibling as HTMLInputElement); inp.type = inp.type === "password" ? "text" : "password"; }}
+  1116→                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+  1117→                          <Eye className="w-3.5 h-3.5" />
+  1118→                        </button>
+  1119→                      </div>
+  1120→                    </div>
+  1121→
+  1122→                    {(selectedProvider === "baileys" || selectedProvider === "evolution-api" || selectedProvider === "custom") && (
+  1123→                      <div>
+  1124→                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
+  1125→                          {selectedProvider === "baileys" ? "WebSocket / REST URL" :
+  1126→                           selectedProvider === "evolution-api" ? "Evolution API Base URL" :
+  1127→                           "API Base URL"} <span className="text-gray-600">(opsional)</span>
+  1128→                        </label>
+  1129→                        <div className="relative">
+  1130→                          <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+  1131→                          <input name="apiBaseUrl" type="url"
+  1132→                            placeholder={selectedProvider === "evolution-api" ? "https://your-evolution.com" : "http://localhost:3000"}
+  1133→                            className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+  1134→                        </div>
+  1135→                      </div>
+  1136→                    )}
+  1137→
+  1138→                    <button type="button"
+  1139→                      onClick={() => { setApiConnected(true); toast.success("Kredensial tersimpan. Bot akan aktif setelah didaftarkan."); }}
+  1140→                      className="w-full py-2.5 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 transition-all">
+  1141→                      <Zap className="w-4 h-4" /> {apiConnected ? "Tersambung" : "Tes Koneksi & Simpan"}
+  1142→                    </button>
+  1143→                  </div>
+  1144→                )}
+  1145→
+  1146→                <div>
+  1147→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Email <span className="text-gray-600">(opsional)</span></label>
+  1148→                  <div className="relative">
+  1149→                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+  1150→                    <input name="email" type="email" placeholder="email@contoh.com"
+  1151→                      className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+  1152→                  </div>
+  1153→                </div>
+  1154→                <div>
+  1155→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Jenis Bot</label>
+  1156→                  <select name="botType"
+  1157→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white appearance-none cursor-pointer transition-all">
+  1158→                    {BOT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+  1159→                  </select>
+  1160→                </div>
+  1161→                <div>
+  1162→                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Deskripsi Bot <span className="text-gray-600">(opsional)</span></label>
+  1163→                  <textarea name="description" rows={3} placeholder="Jelaskan fungsi dan tujuan bot Anda..."
+  1164→                    className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none transition-all" />
+  1165→                </div>
+  1166→                <button type="submit" disabled={loading || !selectedProvider}
+  1167→                  className="btn-primary w-full py-3.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed animate-green-glow">
+  1168→                  {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Mendaftarkan...</> : <><Send className="w-4 h-4" /> Daftarkan Bot</>}
+  1169→                </button>
+  1170→                <p className="text-center text-xs text-gray-600">Dengan mendaftar, Anda menyetujui Syarat &amp; Ketentuan kami.</p>
+  1171→              </form>
+  1172→
+  1173→              <button onClick={() => setActiveTab("beranda")}
+  1174→                className="mt-6 mx-auto flex items-center gap-1.5 text-sm text-gray-500 hover:text-wa-green transition-colors">
+  1175→                <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Kembali ke Beranda
+  1176→              </button>
+  1177→              </>
+  1178→              )}
+  1179→            </div>
+  1180→          </section>
+  1181→        )}
+  1182→
+  1183→        {/* ═══════════════════════════════
+  1184→            DASHBOARD TAB
+  1185→            ═══════════════════════════════ */}
+  1186→        {activeTab === "dashboard" && (
+  1187→          <section className="py-12 md:py-20">
+  1188→            <div className="max-w-6xl mx-auto px-4">
+  1189→              {/* Header */}
+  1190→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 animate-fade-in-up">
+  1191→                <div>
+  1192→                  <h2 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h2>
+  1193→                  <p className="text-gray-400 text-sm mt-1">
+  1194→                    {user ? `Halo, ${user.name || user.email}` : "Kelola semua pendaftaran bot WhatsApp."}
+  1195→                  </p>
+  1196→                </div>
+  1197→                <div className="flex items-center gap-2">
+  1198→                  <button onClick={() => setShowAnalytics(!showAnalytics)}
+  1199→                    className={`btn-outline px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-2 ${showAnalytics ? "border-wa-green/30 text-wa-green bg-wa-green/5" : "border-dark-border-hover text-white"}`}>
+  1200→                    <Activity className="w-3.5 h-3.5" /> Analitik
+  1201→                  </button>
+  1202→                  <button onClick={exportCSV}
+  1203→                    className="btn-outline px-4 py-2.5 rounded-xl border border-dark-border-hover text-white text-xs font-medium flex items-center gap-2">
+  1204→                    <Download className="w-3.5 h-3.5" /> Export CSV
+  1205→                  </button>
+  1206→                  <button onClick={() => scrollToSection("daftar")}
+  1207→                    className="btn-primary px-4 py-2.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-xs flex items-center gap-2">
+  1208→                    <Send className="w-3.5 h-3.5" /> Daftar Bot
+  1209→                  </button>
+  1210→                </div>
+  1211→              </div>
+  1212→
+  1213→              {/* Analytics Panel */}
+  1214→              {showAnalytics && stats && (
+  1215→                <div className="mb-8 animate-fade-in-up grid sm:grid-cols-2 gap-4">
+  1216→                  {/* By Type Chart */}
+  1217→                  <div className="rounded-2xl border border-dark-border bg-dark-card p-5">
+  1218→                    <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2 mb-4">
+  1219→                      <BarChart3 className="w-4 h-4 text-wa-green" /> Distribusi Jenis Bot
+  1220→                    </h4>
+  1221→                    <div className="space-y-3">
+  1222→                      {Object.entries(stats.byType).map(([type, count]) => {
+  1223→                        const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
+  1224→                        const label = BOT_TYPES.find((t) => t.value === type)?.label || type;
+  1225→                        return (
+  1226→                          <div key={type}>
+  1227→                            <div className="flex justify-between text-xs mb-1">
+  1228→                              <span className="text-gray-400">{label}</span>
+  1229→                              <span className="text-gray-300 font-medium">{count} ({pct.toFixed(0)}%)</span>
+  1230→                            </div>
+  1231→                            <div className="h-2 bg-dark-bg rounded-full overflow-hidden">
+  1232→                              <div className="h-full bg-gradient-to-r from-wa-green-dark to-wa-green rounded-full transition-all duration-700"
+  1233→                                style={{ width: `${pct}%` }} />
+  1234→                            </div>
+  1235→                          </div>
+  1236→                        );
+  1237→                      })}
+  1238→                      {Object.keys(stats.byType).length === 0 && (
+  1239→                        <p className="text-gray-600 text-xs text-center py-4">Belum ada data</p>
+  1240→                      )}
+  1241→                    </div>
+  1242→                  </div>
+  1243→
+  1244→                  {/* Status Distribution */}
+  1245→                  <div className="rounded-2xl border border-dark-border bg-dark-card p-5">
+  1246→                    <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2 mb-4">
+  1247→                      <TrendingUp className="w-4 h-4 text-wa-green" /> Ringkasan Status
+  1248→                    </h4>
+  1249→                    <div className="grid grid-cols-3 gap-3 mb-6">
+  1250→                      <div className="text-center p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
+  1251→                        <div className="text-2xl font-bold text-yellow-400">{stats.pending}</div>
+  1252→                        <div className="text-[10px] text-yellow-400/60 mt-0.5">Menunggu</div>
+  1253→                      </div>
+  1254→                      <div className="text-center p-3 rounded-xl bg-green-500/5 border border-green-500/10">
+  1255→                        <div className="text-2xl font-bold text-green-400">{stats.approved}</div>
+  1256→                        <div className="text-[10px] text-green-400/60 mt-0.5">Disetujui</div>
+  1257→                      </div>
+  1258→                      <div className="text-center p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+  1259→                        <div className="text-2xl font-bold text-red-400">{stats.rejected}</div>
+  1260→                        <div className="text-[10px] text-red-400/60 mt-0.5">Ditolak</div>
+  1261→                      </div>
+  1262→                    </div>
+  1263→
+  1264→                    {/* Approval Rate */}
+  1265→                    <div className="rounded-xl bg-[#0d0d0d] border border-dark-border p-4">
+  1266→                      <div className="flex items-center justify-between mb-2">
+  1267→                        <span className="text-xs text-gray-400">Approval Rate</span>
+  1268→                        <span className="text-sm font-bold text-wa-green">
+  1269→                          {stats.total > 0 ? ((stats.approved / stats.total) * 100).toFixed(0) : 0}%
+  1270→                        </span>
+  1271→                      </div>
+  1272→                      <div className="h-3 bg-dark-bg rounded-full overflow-hidden">
+  1273→                        <div className="h-full bg-gradient-to-r from-wa-green-dark to-wa-green rounded-full transition-all duration-700"
+  1274→                          style={{ width: `${stats.total > 0 ? (stats.approved / stats.total) * 100 : 0}%` }} />
+  1275→                      </div>
+  1276→                    </div>
+  1277→                  </div>
+  1278→                </div>
+  1279→              )}
+
+[showing lines 780-1279 of 1406; use offset=1280 with limit to continue reading]

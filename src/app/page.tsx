@@ -9,7 +9,7 @@ import {
   Send, ArrowRight, Trash2, Globe, RefreshCw, Menu, X,
   Search, Filter, Download, Settings, ExternalLink, Copy,
   LogIn, LogOut, UserPlus, Eye, Activity, TrendingUp,
-  Key, Webhook, Bell, FileText, History,
+  Key, Webhook, Bell, FileText, History, ScanLine, Hash,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -124,6 +124,17 @@ export default function Home() {
   /* API connection state */
   const [selectedProvider, setSelectedProvider] = useState("");
   const [apiConnected, setApiConnected] = useState(false);
+
+  /* WhatsApp Baileys connection state */
+  const [connectMethod, setConnectMethod] = useState<"qr" | "code">("qr");
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [connectStatus, setConnectStatus] = useState("");
+  const [connectedApiKey, setConnectedApiKey] = useState<string | null>(null);
+  const [connectedPhone, setConnectedPhone] = useState<string | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [connectPhoneInput, setConnectPhoneInput] = useState("");
+  const connectAbortRef = useRef<AbortController | null>(null);
 
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -283,7 +294,13 @@ export default function Home() {
     };
     if (!data.name || !data.whatsappNumber) { toast.error("Nama dan nomor WhatsApp wajib diisi"); return; }
     if (!data.apiProvider) { toast.error("Pilih provider API WhatsApp"); return; }
-    if (!data.apiKey) { toast.error("API Key wajib diisi"); return; }
+    // Use connected API key from Baileys, or fallback to manual input
+    const finalApiKey = connectedApiKey || data.apiKey;
+    if (!finalApiKey) { toast.error("Sambungkan WhatsApp terlebih dahulu atau masukkan API Key manual"); return; }
+    data.apiKey = finalApiKey;
+    if (connectedPhone && !data.whatsappNumber) {
+      data.whatsappNumber = connectedPhone;
+    }
 
     setLoading(true);
     try {
@@ -303,6 +320,12 @@ export default function Home() {
       e.currentTarget.reset();
       setSelectedProvider("");
       setApiConnected(false);
+      cancelConnection();
+      setConnectedApiKey(null);
+      setConnectedPhone(null);
+      setQrDataUrl(null);
+      setPairingCode(null);
+      setConnectPhoneInput("");
       setActiveTab("dashboard");
     } catch (err) {
       console.error("Register error:", err);
@@ -409,6 +432,128 @@ export default function Home() {
   function copyWebhook(url: string) {
     navigator.clipboard.writeText(url);
     toast.success("Webhook URL disalin!");
+  }
+
+  /* ─── Cleanup SSE on unmount ─── */
+  useEffect(() => {
+    return () => { connectAbortRef.current?.abort(); };
+  }, []);
+
+  /* ─── Baileys WhatsApp Connection (SSE) ─── */
+  async function startConnection(method: "qr" | "code", phone?: string) {
+    // Abort previous connection
+    connectAbortRef.current?.abort();
+    const abortController = new AbortController();
+    connectAbortRef.current = abortController;
+
+    setConnectLoading(true);
+    setConnectStatus("Menghubungkan ke WhatsApp...");
+    setQrDataUrl(null);
+    setPairingCode(null);
+    setConnectedApiKey(null);
+    setConnectedPhone(null);
+    setApiConnected(false);
+
+    try {
+      const res = await fetch("/api/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, phone: phone || undefined }),
+        signal: abortController.signal,
+      });
+
+      if (!res.ok) {
+        let msg = "Gagal membuat koneksi";
+        try { const j = await res.json(); msg = j.error || msg; } catch {}
+        toast.error(msg);
+        setConnectStatus("");
+        setConnectLoading(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        let currentEvent = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              switch (currentEvent) {
+                case "qr": {
+                  const QRCode = (await import("qrcode")).default;
+                  const url = await QRCode.toDataURL(data.qr, {
+                    width: 280, margin: 2,
+                    color: { dark: "#000000", light: "#ffffff" },
+                  });
+                  setQrDataUrl(url);
+                  setConnectStatus("Scan QR code dengan WhatsApp Anda");
+                  break;
+                }
+                case "code":
+                  setPairingCode(data.code);
+                  setConnectStatus("Masukkan kode di WhatsApp: Menu > Perangkat Tertaut");
+                  break;
+                case "connected":
+                  setConnectedApiKey(data.apiKey);
+                  setConnectedPhone(data.phoneNumber);
+                  setConnectStatus("");
+                  setConnectLoading(false);
+                  setApiConnected(true);
+                  toast.success("WhatsApp berhasil terhubung! API Key dibuat.");
+                  // Auto-fill phone if empty
+                  const phoneInput = document.querySelector<HTMLInputElement>('input[name="whatsappNumber"]');
+                  if (phoneInput && !phoneInput.value && data.phoneNumber) {
+                    phoneInput.value = data.phoneNumber.startsWith("0")
+                      ? "+62" + data.phoneNumber.slice(1)
+                      : "+" + data.phoneNumber;
+                  }
+                  break;
+                case "error":
+                  toast.error(data.message || "Koneksi gagal");
+                  setConnectStatus(data.message || "Koneksi gagal");
+                  setConnectLoading(false);
+                  break;
+                case "timeout":
+                  toast.error("Waktu habis. Silakan coba lagi.");
+                  setConnectStatus("Waktu habis");
+                  setConnectLoading(false);
+                  break;
+              }
+            } catch { /* parse error */ }
+            currentEvent = "";
+          }
+        }
+      }
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.error("Connection error:", e);
+        toast.error("Gagal terhubung ke server koneksi");
+      }
+      setConnectStatus("");
+      setConnectLoading(false);
+    }
+  }
+
+  function cancelConnection() {
+    connectAbortRef.current?.abort();
+    setConnectLoading(false);
+    setConnectStatus("");
+    setQrDataUrl(null);
+    setPairingCode(null);
   }
 
   /* ─── Helpers ─── */
@@ -1072,7 +1217,7 @@ export default function Home() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {API_PROVIDERS.map((p) => (
                       <button key={p.value} type="button"
-                        onClick={() => { setSelectedProvider(p.value); setApiConnected(false); }}
+                        onClick={() => { setSelectedProvider(p.value); setApiConnected(false); cancelConnection(); setConnectedApiKey(null); }}
                         className={`p-3 rounded-xl border text-left transition-all ${
                           selectedProvider === p.value
                             ? "border-wa-green/50 bg-wa-green/10 ring-1 ring-wa-green/30"
@@ -1085,61 +1230,197 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* ── API KEY / CREDENTIALS ── */}
+                {/* ── WHATSAPP CONNECTION (QR / CODE) ── */}
                 {selectedProvider && (
-                  <div className="space-y-4 p-4 rounded-xl border border-dark-border bg-[#0d0d0d] animate-fade-in-up">
+                  <div className="space-y-4 p-4 md:p-5 rounded-xl border border-dark-border bg-[#0d0d0d] animate-fade-in-up">
                     <div className="flex items-center gap-2 mb-1">
-                      <Key className="w-4 h-4 text-wa-green" />
-                      <h4 className="text-sm font-medium text-white">Kredensial API</h4>
+                      <Zap className="w-4 h-4 text-wa-green" />
+                      <h4 className="text-sm font-medium text-white">Sambungkan WhatsApp</h4>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-wa-green/10 text-wa-green font-medium">
                         {API_PROVIDERS.find((p) => p.value === selectedProvider)?.label}
                       </span>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                        {selectedProvider === "whatsapp-cloud" ? "Access Token / Phone Number ID" :
-                         selectedProvider === "baileys" ? "Session String / Connection Key" :
-                         "API Key / Token"} <span className="text-red-400">*</span>
-                      </label>
-                      <div className="relative">
-                        <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-                        <input name="apiKey" type="password" required
-                          placeholder={
-                            selectedProvider === "whatsapp-cloud" ? "EAAxxxxxx..." :
-                            selectedProvider === "baileys" ? "1ABCDef2@session..." :
-                            "Masukkan API key Anda"
-                          }
-                          onChange={() => setApiConnected(false)}
-                          className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
-                        <button type="button" onClick={(e) => { const inp = (e.currentTarget.previousElementSibling as HTMLInputElement); inp.type = inp.type === "password" ? "text" : "password"; }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
-                          <Eye className="w-3.5 h-3.5" />
+                    {/* Connected state */}
+                    {connectedApiKey ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                          <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm text-green-400 font-medium">WhatsApp Terhubung!</p>
+                            <p className="text-xs text-green-400/60 truncate">API Key: {connectedApiKey}</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => { cancelConnection(); setSelectedProvider(""); setConnectedApiKey(null); }}
+                          className="w-full py-2 rounded-xl text-xs font-medium text-gray-400 border border-dark-border hover:border-red-500/30 hover:text-red-400 transition-all">
+                          Putuskan & Hubungkan Ulang
                         </button>
                       </div>
-                    </div>
-
-                    {(selectedProvider === "baileys" || selectedProvider === "evolution-api" || selectedProvider === "custom") && (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                          {selectedProvider === "baileys" ? "WebSocket / REST URL" :
-                           selectedProvider === "evolution-api" ? "Evolution API Base URL" :
-                           "API Base URL"} <span className="text-gray-600">(opsional)</span>
-                        </label>
-                        <div className="relative">
-                          <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-                          <input name="apiBaseUrl" type="url"
-                            placeholder={selectedProvider === "evolution-api" ? "https://your-evolution.com" : "http://localhost:3000"}
-                            className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+                    ) : (
+                      <>
+                        {/* Method Tabs */}
+                        <div className="flex gap-2 p-1 rounded-xl bg-dark-bg">
+                          <button type="button" onClick={() => { setConnectMethod("qr"); cancelConnection(); }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                              connectMethod === "qr" ? "bg-wa-green/10 text-wa-green border border-wa-green/20" : "text-gray-400 hover:text-white"
+                            }`}>
+                            <ScanLine className="w-3.5 h-3.5" /> Scan QR Code
+                          </button>
+                          <button type="button" onClick={() => { setConnectMethod("code"); cancelConnection(); }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                              connectMethod === "code" ? "bg-wa-green/10 text-wa-green border border-wa-green/20" : "text-gray-400 hover:text-white"
+                            }`}>
+                            <Hash className="w-3.5 h-3.5" /> Kode Pairing
+                          </button>
                         </div>
-                      </div>
+
+                        {/* QR Method */}
+                        {connectMethod === "qr" && (
+                          <div className="text-center space-y-3 py-2">
+                            {connectLoading && !qrDataUrl && (
+                              <div className="py-8 space-y-3">
+                                <RefreshCw className="w-8 h-8 text-wa-green animate-spin mx-auto" />
+                                <p className="text-sm text-gray-400">{connectStatus || "Membuat koneksi..."}</p>
+                              </div>
+                            )}
+                            {qrDataUrl && (
+                              <div className="space-y-3">
+                                <div className="inline-block p-3 rounded-2xl bg-white">
+                                  <img src={qrDataUrl} alt="WhatsApp QR Code" className="w-56 h-56 md:w-64 md:h-64 rounded-lg" />
+                                </div>
+                                <p className="text-xs text-gray-400">Buka WhatsApp di HP &gt; Menu &gt; Perangkat Tertaut &gt; Tautkan Perangkat</p>
+                                {connectStatus && (
+                                  <p className="text-xs text-wa-green flex items-center justify-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-wa-green animate-pulse" />
+                                    {connectStatus}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {!connectLoading && !qrDataUrl && (
+                              <button type="button" onClick={() => startConnection("qr")}
+                                className="w-full py-3 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 transition-all animate-green-glow">
+                                <ScanLine className="w-4 h-4" /> Generate QR Code
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Code Method */}
+                        {connectMethod === "code" && (
+                          <div className="space-y-3 py-2">
+                            {!pairingCode && !connectLoading && (
+                              <>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Nomor WhatsApp (tanpa +)</label>
+                                  <div className="relative">
+                                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                                    <input type="tel" value={connectPhoneInput} onChange={(e) => setConnectPhoneInput(e.target.value.replace(/[^0-9]/g, ""))}
+                                      placeholder="6281234567890" maxLength={15}
+                                      className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+                                  </div>
+                                </div>
+                                <button type="button" onClick={() => {
+                                  if (!connectPhoneInput || connectPhoneInput.length < 10) {
+                                    toast.error("Masukkan nomor WhatsApp yang valid"); return;
+                                  }
+                                  startConnection("code", connectPhoneInput);
+                                }}
+                                  className="w-full py-3 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 transition-all">
+                                  <Hash className="w-4 h-4" /> Minta Kode Pairing
+                                </button>
+                              </>
+                            )}
+                            {connectLoading && !pairingCode && (
+                              <div className="py-6 text-center space-y-3">
+                                <RefreshCw className="w-8 h-8 text-wa-green animate-spin mx-auto" />
+                                <p className="text-sm text-gray-400">{connectStatus || "Membuat koneksi..."}</p>
+                              </div>
+                            )}
+                            {pairingCode && (
+                              <div className="text-center space-y-4 py-2">
+                                <div className="p-4 rounded-xl bg-dark-bg border border-dark-border">
+                                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Kode Pairing Anda</p>
+                                  <p className="text-3xl md:text-4xl font-mono font-bold text-wa-green tracking-[0.25em]">
+                                    {pairingCode.match(/.{1,4}/g)?.join(" - ")}
+                                  </p>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <p className="text-xs text-gray-400">Cara menghubungkan:</p>
+                                  <ol className="text-xs text-gray-500 space-y-1 text-left max-w-xs mx-auto list-decimal list-inside">
+                                    <li>Buka WhatsApp di HP</li>
+                                    <li>Menu (tiga titik) &gt; Perangkat Tertaut</li>
+                                    <li>Tautkan Perangkat &gt; Tautkan dengan nomor telepon</li>
+                                    <li>Masukkan kode: <span className="text-wa-green font-mono font-bold">{pairingCode}</span></li>
+                                  </ol>
+                                </div>
+                                {connectStatus && (
+                                  <p className="text-xs text-wa-green flex items-center justify-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-wa-green animate-pulse" />
+                                    {connectStatus}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Cancel button */}
+                        {connectLoading && (
+                          <button type="button" onClick={cancelConnection}
+                            className="w-full py-2 rounded-xl text-xs font-medium text-gray-400 border border-dark-border hover:border-red-500/30 hover:text-red-400 transition-all">
+                            Batal
+                          </button>
+                        )}
+
+                        {/* Divider: Manual fallback */}
+                        {!connectedApiKey && !connectLoading && (
+                          <div className="relative py-1">
+                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark-border" /></div>
+                            <div className="relative flex justify-center text-xs"><span className="px-3 bg-[#0d0d0d] text-gray-600">atau masukkan API Key manual</span></div>
+                          </div>
+                        )}
+                      </>
                     )}
 
-                    <button type="button"
-                      onClick={() => { setApiConnected(true); toast.success("Kredensial tersimpan. Bot akan aktif setelah didaftarkan."); }}
-                      className="w-full py-2.5 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 transition-all">
-                      <Zap className="w-4 h-4" /> {apiConnected ? "Tersambung" : "Tes Koneksi & Simpan"}
-                    </button>
+                    {/* Manual API Key (always visible as fallback) */}
+                    {(!connectedApiKey || connectLoading) && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                            {selectedProvider === "whatsapp-cloud" ? "Access Token" :
+                             selectedProvider === "baileys" ? "Session String" :
+                             "API Key / Token"}
+                          </label>
+                          <div className="relative">
+                            <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                            <input name="apiKey" type="password"
+                              placeholder={selectedProvider === "whatsapp-cloud" ? "EAAxxxxxx..." : "Masukkan API key manual"}
+                              onChange={() => setApiConnected(false)}
+                              className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+                            <button type="button" onClick={(e) => { const inp = (e.currentTarget.previousElementSibling as HTMLInputElement); inp.type = inp.type === "password" ? "text" : "password"; }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {(selectedProvider === "baileys" || selectedProvider === "evolution-api" || selectedProvider === "custom") && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                              {selectedProvider === "baileys" ? "WebSocket / REST URL" :
+                               selectedProvider === "evolution-api" ? "Evolution API Base URL" :
+                               "API Base URL"} <span className="text-gray-600">(opsional)</span>
+                            </label>
+                            <div className="relative">
+                              <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                              <input name="apiBaseUrl" type="url"
+                                placeholder={selectedProvider === "evolution-api" ? "https://your-evolution.com" : "http://localhost:3000"}
+                                className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
