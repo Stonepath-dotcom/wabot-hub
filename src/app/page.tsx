@@ -26,6 +26,9 @@ interface BotReg {
   welcomeMessage: string | null;
   autoReply: string | null;
   operatingHours: string | null;
+  apiProvider: string | null;
+  apiKey: string | null;
+  apiBaseUrl: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { auditLogs: number; configs: number };
@@ -53,6 +56,16 @@ const BOT_TYPES = [
   { value: "notification", label: "Notifikasi & Reminder" },
   { value: "ai-chatbot", label: "AI Chatbot" },
   { value: "other", label: "Lainnya" },
+];
+
+const API_PROVIDERS = [
+  { value: "baileys", label: "Baileys", desc: "WhatsApp Web Multi-Device (self-hosted)" },
+  { value: "evolution-api", label: "Evolution API", desc: "REST API untuk WhatsApp" },
+  { value: "fonnte", label: "Fonnte", desc: "WhatsApp API Indonesia" },
+  { value: "wablas", label: "Wablas", desc: "WhatsApp Blast & API" },
+  { value: "maytapi", label: "Maytapi", desc: "WhatsApp Business API" },
+  { value: "whatsapp-cloud", label: "WhatsApp Cloud API", desc: "Official Meta Business API" },
+  { value: "custom", label: "Custom / Lainnya", desc: "Provider lain atau self-hosted" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
@@ -108,15 +121,9 @@ export default function Home() {
   const [cfgAutoReply, setCfgAutoReply] = useState("");
   const [cfgHours, setCfgHours] = useState("00:00 - 23:59");
 
-  /* WA verification state */
-  const [waStep, setWaStep] = useState<"idle" | "verifying" | "verified">("idle");
-  const [waCode, setWaCode] = useState("");
-  const [waQrDataUrl, setWaQrDataUrl] = useState("");
-  const [waCodeInput, setWaCodeInput] = useState("");
-  const [waPhoneInput, setWaPhoneInput] = useState("");
-  const [waVerifying, setWaVerifying] = useState(false);
-  const [waExpiry, setWaExpiry] = useState<number>(0);
-  const waTimerRef = useRef<ReturnType<typeof setInterval>>(null);
+  /* API connection state */
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [apiConnected, setApiConnected] = useState(false);
 
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -173,15 +180,7 @@ export default function Home() {
     if (activeTab === "dashboard") fetchBots();
   }, [activeTab, fetchBots]);
 
-  /* Timer tick to force re-render for countdown display */
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (waStep !== "verifying") return;
-    const iv = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(iv);
-  }, [waStep]);
-
-  useScrollReveal(activeTab === "beranda");
+    useScrollReveal(activeTab === "beranda");
 
   /* ─── Auth handlers ─── */
   async function handleAuth(e: FormEvent, mode: "login" | "register") {
@@ -267,81 +266,24 @@ export default function Home() {
     setAuthLoading(false);
   }
 
-  /* ─── Generate WA verification code ─── */
-  async function startWaVerification(phone: string) {
-    const cleanPhone = phone.replace(/[\s\-()]/g, "");
-    const phoneRegex = /^(\+62|62|0)[0-9]{8,13}$/;
-    if (!phoneRegex.test(cleanPhone)) {
-      toast.error("Format nomor WhatsApp tidak valid (contoh: +6281234567890)");
-      return;
-    }
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setWaCode(code);
-    setWaCodeInput("");
-    setWaPhoneInput(cleanPhone);
-    setWaExpiry(Date.now() + 5 * 60 * 1000); // 5 min expiry
-    setWaVerifying(true);
-
-    // Generate QR code with wa.me link
-    const waMessage = encodeURIComponent(`Verifikasi WaBot Hub\nKode: ${code}`);
-    const waLink = `https://wa.me/${cleanPhone.replace(/^0/, "62").replace(/^\+/, "")}?text=${waMessage}`;
-    try {
-      const QRCode = (await import("qrcode")).default;
-      const dataUrl = await QRCode.toDataURL(waLink, {
-        width: 220,
-        margin: 1,
-        color: { dark: "#25D366", light: "#0a0a0a" },
-      });
-      setWaQrDataUrl(dataUrl);
-    } catch {
-      setWaQrDataUrl("");
-    }
-
-    setWaStep("verifying");
-
-    // Auto-expire timer
-    if (waTimerRef.current) clearInterval(waTimerRef.current);
-    waTimerRef.current = setInterval(() => {
-      setWaExpiry((prev) => {
-        if (prev - Date.now() <= 0) {
-          setWaStep("idle");
-          setWaVerifying(false);
-          if (waTimerRef.current) clearInterval(waTimerRef.current);
-          return 0;
-        }
-        return prev;
-      });
-    }, 1000);
-  }
-
-  function verifyWaCode() {
-    if (waCodeInput.trim() === waCode) {
-      setWaStep("verified");
-      setWaVerifying(false);
-      if (waTimerRef.current) clearInterval(waTimerRef.current);
-      toast.success("Nomor WhatsApp berhasil diverifikasi!");
-    } else {
-      toast.error("Kode verifikasi salah. Coba lagi.");
-    }
-  }
-
   /* ─── Form submit ─── */
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (waStep !== "verified") {
-      toast.error("Verifikasi nomor WhatsApp terlebih dahulu");
-      return;
-    }
     const fd = new FormData(e.currentTarget);
     const data = {
       name: (fd.get("name") as string)?.trim(),
-      whatsappNumber: waPhoneInput,
+      whatsappNumber: (fd.get("whatsappNumber") as string)?.trim(),
       email: (fd.get("email") as string)?.trim() || null,
       botType: (fd.get("botType") as string) || "customer-service",
       description: (fd.get("description") as string)?.trim() || null,
+      apiProvider: selectedProvider || null,
+      apiKey: (fd.get("apiKey") as string)?.trim() || null,
+      apiBaseUrl: (fd.get("apiBaseUrl") as string)?.trim() || null,
       userId: user?.id || null,
     };
     if (!data.name || !data.whatsappNumber) { toast.error("Nama dan nomor WhatsApp wajib diisi"); return; }
+    if (!data.apiProvider) { toast.error("Pilih provider API WhatsApp"); return; }
+    if (!data.apiKey) { toast.error("API Key wajib diisi"); return; }
 
     setLoading(true);
     try {
@@ -357,12 +299,10 @@ export default function Home() {
         return;
       }
       const json = await res.json();
-      toast.success("Pendaftaran berhasil dikirim!");
+      toast.success("Bot berhasil didaftarkan!");
       e.currentTarget.reset();
-      setWaStep("idle");
-      setWaCode("");
-      setWaPhoneInput("");
-      setWaQrDataUrl("");
+      setSelectedProvider("");
+      setApiConnected(false);
       setActiveTab("dashboard");
     } catch (err) {
       console.error("Register error:", err);
@@ -1116,96 +1056,92 @@ export default function Home() {
                     className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
                 </div>
 
-                {/* ── WHATSAPP VERIFICATION ── */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nomor WhatsApp <span className="text-red-400">*</span></label>
-                  {waStep === "idle" && (
-                    <div className="space-y-3">
-                      <div className="relative">
-                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                        <input id="wa-phone-input" type="tel" placeholder="+62 812-3456-7890"
-                          value={waPhoneInput}
-                          onChange={(e) => setWaPhoneInput(e.target.value)}
-                          className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
-                      </div>
-                      <button type="button" onClick={() => startWaVerification(waPhoneInput)} disabled={waVerifying || !waPhoneInput}
-                        className="w-full py-2.5 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                        <MessageSquare className="w-4 h-4" /> Verifikasi via WhatsApp
-                      </button>
-                    </div>
-                  )}
-
-                  {waStep === "verifying" && (
-                    <div className="space-y-4 p-4 rounded-xl border border-wa-green/20 bg-wa-green/5">
-                      <div className="text-center">
-                        <p className="text-sm text-gray-300 mb-1">Scan QR Code atau klik tombol di bawah</p>
-                        <p className="text-xs text-gray-500">Buka WhatsApp, kirim pesan verifikasi ke nomor <span className="text-wa-green font-medium">{waPhoneInput}</span></p>
-                      </div>
-
-                      {/* QR Code */}
-                      {waQrDataUrl && (
-                        <div className="flex justify-center">
-                          <div className="p-3 rounded-xl bg-white">
-                            <img src={waQrDataUrl} alt="QR Code WhatsApp" className="w-52 h-52" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Timer */}
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500">
-                          Kode berlaku {Math.max(0, Math.ceil((waExpiry - Date.now()) / 1000))} detik lagi
-                        </p>
-                      </div>
-
-                      {/* Open WhatsApp button */}
-                      {(() => {
-                        const cleanForLink = waPhoneInput.replace(/^0/, "62").replace(/^\+/, "");
-                        const waMsg = encodeURIComponent(`Verifikasi WaBot Hub\nKode: ${waCode}`);
-                        return (
-                          <a href={`https://wa.me/${cleanForLink}?text=${waMsg}`} target="_blank" rel="noopener"
-                            className="w-full py-2.5 rounded-xl bg-[#25D366] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-all">
-                            <MessageSquare className="w-4 h-4" /> Buka WhatsApp
-                          </a>
-                        );
-                      })()}
-
-                      {/* Code input */}
-                      <div className="space-y-2">
-                        <label className="block text-xs text-gray-400 text-center">Masukkan 6-digit kode verifikasi</label>
-                        <div className="flex gap-2">
-                          <input type="text" maxLength={6} placeholder="000000"
-                            value={waCodeInput}
-                            onChange={(e) => setWaCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                            className="input-glow flex-1 bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-2.5 text-center text-lg tracking-[0.3em] font-mono text-white placeholder:text-gray-600 transition-all" />
-                          <button type="button" onClick={verifyWaCode} disabled={waCodeInput.length !== 6}
-                            className="px-5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed">
-                            Verifikasi
-                          </button>
-                        </div>
-                      </div>
-
-                      <button type="button" onClick={() => { setWaStep("idle"); setWaVerifying(false); if (waTimerRef.current) clearInterval(waTimerRef.current); }}
-                        className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors py-1">
-                        Batal & pakai nomor lain
-                      </button>
-                    </div>
-                  )}
-
-                  {waStep === "verified" && (
-                    <div className="flex items-center gap-3 p-4 rounded-xl border border-green-500/20 bg-green-500/5">
-                      <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                        <CheckCircle2 className="w-5 h-5 text-green-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-green-300 text-sm font-medium">Terverifikasi</p>
-                        <p className="text-gray-500 text-xs truncate">{waPhoneInput}</p>
-                      </div>
-                      <button type="button" onClick={() => { setWaStep("idle"); setWaCode(""); setWaPhoneInput(""); setWaQrDataUrl(""); }}
-                        className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Ubah</button>
-                    </div>
-                  )}
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nomor WhatsApp Bot <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input name="whatsappNumber" type="tel" required placeholder="+62 812-3456-7890"
+                      className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 transition-all" />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">Nomor WA yang digunakan bot untuk menerima &amp; mengirim pesan</p>
                 </div>
+
+                {/* ── API PROVIDER ── */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Provider API WhatsApp <span className="text-red-400">*</span></label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {API_PROVIDERS.map((p) => (
+                      <button key={p.value} type="button"
+                        onClick={() => { setSelectedProvider(p.value); setApiConnected(false); }}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          selectedProvider === p.value
+                            ? "border-wa-green/50 bg-wa-green/10 ring-1 ring-wa-green/30"
+                            : "border-dark-border bg-[#0d0d0d] hover:border-dark-border-hover"
+                        }`}>
+                        <p className={`text-xs font-semibold ${selectedProvider === p.value ? "text-wa-green" : "text-white"}`}>{p.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{p.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── API KEY / CREDENTIALS ── */}
+                {selectedProvider && (
+                  <div className="space-y-4 p-4 rounded-xl border border-dark-border bg-[#0d0d0d] animate-fade-in-up">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Key className="w-4 h-4 text-wa-green" />
+                      <h4 className="text-sm font-medium text-white">Kredensial API</h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-wa-green/10 text-wa-green font-medium">
+                        {API_PROVIDERS.find((p) => p.value === selectedProvider)?.label}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        {selectedProvider === "whatsapp-cloud" ? "Access Token / Phone Number ID" :
+                         selectedProvider === "baileys" ? "Session String / Connection Key" :
+                         "API Key / Token"} <span className="text-red-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                        <input name="apiKey" type="password" required
+                          placeholder={
+                            selectedProvider === "whatsapp-cloud" ? "EAAxxxxxx..." :
+                            selectedProvider === "baileys" ? "1ABCDef2@session..." :
+                            "Masukkan API key Anda"
+                          }
+                          onChange={() => setApiConnected(false)}
+                          className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+                        <button type="button" onClick={(e) => { const inp = (e.currentTarget.previousElementSibling as HTMLInputElement); inp.type = inp.type === "password" ? "text" : "password"; }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {(selectedProvider === "baileys" || selectedProvider === "evolution-api" || selectedProvider === "custom") && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                          {selectedProvider === "baileys" ? "WebSocket / REST URL" :
+                           selectedProvider === "evolution-api" ? "Evolution API Base URL" :
+                           "API Base URL"} <span className="text-gray-600">(opsional)</span>
+                        </label>
+                        <div className="relative">
+                          <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                          <input name="apiBaseUrl" type="url"
+                            placeholder={selectedProvider === "evolution-api" ? "https://your-evolution.com" : "http://localhost:3000"}
+                            className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
+                        </div>
+                      </div>
+                    )}
+
+                    <button type="button"
+                      onClick={() => { setApiConnected(true); toast.success("Kredensial tersimpan. Bot akan aktif setelah didaftarkan."); }}
+                      className="w-full py-2.5 rounded-xl border border-wa-green/30 bg-wa-green/5 text-wa-green text-sm font-medium flex items-center justify-center gap-2 hover:bg-wa-green/10 transition-all">
+                      <Zap className="w-4 h-4" /> {apiConnected ? "Tersambung" : "Tes Koneksi & Simpan"}
+                    </button>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Email <span className="text-gray-600">(opsional)</span></label>
@@ -1227,11 +1163,11 @@ export default function Home() {
                   <textarea name="description" rows={3} placeholder="Jelaskan fungsi dan tujuan bot Anda..."
                     className="input-glow w-full bg-[#0d0d0d] border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none transition-all" />
                 </div>
-                <button type="submit" disabled={loading || waStep !== "verified"}
+                <button type="submit" disabled={loading || !selectedProvider}
                   className="btn-primary w-full py-3.5 rounded-xl bg-wa-green text-dark-bg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed animate-green-glow">
-                  {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Mendaftarkan...</> : waStep !== "verified" ? <><Shield className="w-4 h-4" /> Verifikasi WhatsApp Terlebih Dahulu</> : <><Send className="w-4 h-4" /> Daftarkan Bot</>}
+                  {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Mendaftarkan...</> : <><Send className="w-4 h-4" /> Daftarkan Bot</>}
                 </button>
-                <p className="text-center text-xs text-gray-600">Dengan mendaftar, Anda menyetujui Syarat & Ketentuan kami.</p>
+                <p className="text-center text-xs text-gray-600">Dengan mendaftar, Anda menyetujui Syarat &amp; Ketentuan kami.</p>
               </form>
 
               <button onClick={() => setActiveTab("beranda")}

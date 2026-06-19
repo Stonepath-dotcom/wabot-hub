@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, whatsappNumber, email, botType, description, userId } = body;
+    const { name, whatsappNumber, email, botType, description, userId, apiProvider, apiKey, apiBaseUrl } = body;
 
     if (!name || !whatsappNumber) {
       return NextResponse.json(
@@ -48,6 +48,9 @@ export async function POST(req: NextRequest) {
         welcome_message: null,
         auto_reply: null,
         operating_hours: null,
+        api_provider: apiProvider || null,
+        api_key: apiKey || null,
+        api_base_url: apiBaseUrl || null,
       })
       .select()
       .single();
@@ -139,6 +142,9 @@ export async function GET(req: NextRequest) {
       welcomeMessage: r.welcome_message,
       autoReply: r.auto_reply,
       operatingHours: r.operating_hours,
+      apiProvider: r.api_provider,
+      apiKey: r.api_key,
+      apiBaseUrl: r.api_base_url,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       userId: r.user_id,
