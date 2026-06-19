@@ -288,16 +288,13 @@ export default function Home() {
       botType: (fd.get("botType") as string) || "customer-service",
       description: (fd.get("description") as string)?.trim() || null,
       apiProvider: selectedProvider || null,
-      apiKey: (fd.get("apiKey") as string)?.trim() || null,
+      apiKey: connectedApiKey || null,
       apiBaseUrl: (fd.get("apiBaseUrl") as string)?.trim() || null,
       userId: user?.id || null,
     };
     if (!data.name || !data.whatsappNumber) { toast.error("Nama dan nomor WhatsApp wajib diisi"); return; }
     if (!data.apiProvider) { toast.error("Pilih provider API WhatsApp"); return; }
-    // Use connected API key from Baileys, or fallback to manual input
-    const finalApiKey = connectedApiKey || data.apiKey;
-    if (!finalApiKey) { toast.error("Sambungkan WhatsApp terlebih dahulu atau masukkan API Key manual"); return; }
-    data.apiKey = finalApiKey;
+    if (!connectedApiKey) { toast.error("Sambungkan WhatsApp terlebih dahulu (QR / Kode Pairing)"); return; }
     if (connectedPhone && !data.whatsappNumber) {
       data.whatsappNumber = connectedPhone;
     }
@@ -1248,7 +1245,7 @@ export default function Home() {
                           <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
                           <div className="min-w-0">
                             <p className="text-sm text-green-400 font-medium">WhatsApp Terhubung!</p>
-                            <p className="text-xs text-green-400/60 truncate">API Key: {connectedApiKey}</p>
+                            <p className="text-xs text-green-400/60">API Key tersimpan di server</p>
                           </div>
                         </div>
                         <button type="button" onClick={() => { cancelConnection(); setSelectedProvider(""); setConnectedApiKey(null); }}
@@ -1372,54 +1369,7 @@ export default function Home() {
                             Batal
                           </button>
                         )}
-
-                        {/* Divider: Manual fallback */}
-                        {!connectedApiKey && !connectLoading && (
-                          <div className="relative py-1">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark-border" /></div>
-                            <div className="relative flex justify-center text-xs"><span className="px-3 bg-[#0d0d0d] text-gray-600">atau masukkan API Key manual</span></div>
-                          </div>
-                        )}
                       </>
-                    )}
-
-                    {/* Manual API Key (always visible as fallback) */}
-                    {(!connectedApiKey || connectLoading) && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                            {selectedProvider === "whatsapp-cloud" ? "Access Token" :
-                             selectedProvider === "baileys" ? "Session String" :
-                             "API Key / Token"}
-                          </label>
-                          <div className="relative">
-                            <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-                            <input name="apiKey" type="password"
-                              placeholder={selectedProvider === "whatsapp-cloud" ? "EAAxxxxxx..." : "Masukkan API key manual"}
-                              onChange={() => setApiConnected(false)}
-                              className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
-                            <button type="button" onClick={(e) => { const inp = (e.currentTarget.previousElementSibling as HTMLInputElement); inp.type = inp.type === "password" ? "text" : "password"; }}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                        {(selectedProvider === "baileys" || selectedProvider === "evolution-api" || selectedProvider === "custom") && (
-                          <div>
-                            <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                              {selectedProvider === "baileys" ? "WebSocket / REST URL" :
-                               selectedProvider === "evolution-api" ? "Evolution API Base URL" :
-                               "API Base URL"} <span className="text-gray-600">(opsional)</span>
-                            </label>
-                            <div className="relative">
-                              <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-                              <input name="apiBaseUrl" type="url"
-                                placeholder={selectedProvider === "evolution-api" ? "https://your-evolution.com" : "http://localhost:3000"}
-                                className="input-glow w-full bg-[#0a0a0a] border border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600 font-mono transition-all" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
                     )}
                   </div>
                 )}
